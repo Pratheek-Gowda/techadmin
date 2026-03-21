@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 
 const prisma = new PrismaClient()
-
+ 
 // --- AUTHENTICATION ---
 
 export async function loginUser(username, password) {
