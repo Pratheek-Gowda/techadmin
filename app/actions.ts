@@ -3,8 +3,12 @@
 import { PrismaClient } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 
-const prisma = new PrismaClient()
- 
+// Singleton pattern to prevent multiple Prisma instances in development/serverless
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
+export const prisma = globalForPrisma.prisma || new PrismaClient()
+
+if (process.env.NODE_NODE !== 'production') globalForPrisma.prisma = prisma
+
 // --- AUTHENTICATION ---
 
 export async function loginUser(username, password) {
@@ -12,6 +16,7 @@ export async function loginUser(username, password) {
     where: { username }
   })
 
+  // Basic security check (In production, use bcrypt to compare hashed passwords)
   if (!user || user.password !== password) {
     throw new Error("Invalid credentials")
   }
@@ -22,10 +27,13 @@ export async function loginUser(username, password) {
 // --- USER ACTIONS ---
 
 export async function requestFunds(userId, amount) {
+  const numericAmount = parseFloat(amount)
+  if (isNaN(numericAmount) || numericAmount <= 0) throw new Error("Invalid amount")
+
   await prisma.fundRequest.create({
     data: {
       userId,
-      amount: parseFloat(amount),
+      amount: numericAmount,
       status: 'pending'
     }
   })
@@ -95,6 +103,7 @@ export async function getAllUsers() {
 
 export async function updateWallet(userId, amount, type, description) {
   const numericAmount = parseFloat(amount)
+  if (isNaN(numericAmount) || numericAmount <= 0) throw new Error("Invalid amount")
   
   return await prisma.$transaction(async (tx) => {
     // 1. Check Admin Wallet if crediting user
@@ -110,7 +119,7 @@ export async function updateWallet(userId, amount, type, description) {
       })
       // Log admin side
       await tx.transaction.create({
-        data: { type: 'admin_remove', amount: numericAmount, description: `Transfer to user: ${userId}`, entity: 'admin' }
+        data: { type: 'admin_remove', amount: numericAmount, description: `Transfer to user ID: ${userId}`, entity: 'admin' }
       })
     }
 
@@ -135,6 +144,8 @@ export async function updateWallet(userId, amount, type, description) {
 
 export async function updateAdminWallet(amount, type) {
   const numericAmount = parseFloat(amount)
+  if (isNaN(numericAmount) || numericAmount <= 0) throw new Error("Invalid amount")
+
   await prisma.$transaction(async (tx) => {
     await tx.globalSettings.update({
       where: { id: 1 },
@@ -148,7 +159,7 @@ export async function updateAdminWallet(amount, type) {
       data: {
         type: type === 'add' ? 'admin_add' : 'admin_remove',
         amount: numericAmount,
-        description: `${type === 'add' ? 'Added' : 'Removed'} funds manually`,
+        description: `${type === 'add' ? 'Added' : 'Removed'} funds manually to Admin Wallet`,
         entity: 'admin'
       }
     })
@@ -192,7 +203,7 @@ export async function handleFundRequest(requestId, status) {
 
     if (status === 'approved') {
       const settings = await tx.globalSettings.findFirst()
-      if (!settings || settings.adminWallet < request.amount) throw new Error("Insufficient Admin Wallet")
+      if (!settings || settings.adminWallet < request.amount) throw new Error("Insufficient Admin Wallet balance")
 
       await tx.globalSettings.update({
         where: { id: 1 },
