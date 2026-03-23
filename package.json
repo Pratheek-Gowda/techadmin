@@ -1,8 +1,15 @@
 {
-  "name": "pratheek-enterprises-admin",
+  "name": "pratheek-subagents",
   "version": "1.0.0",
+  "description": "Subagent portal for Pratheek Enterprises",
+  "main": "public/index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
   "dependencies": {
-    "pg": "^8.11.0",
-    "dotenv": "^16.0.0"
+    "pg": "^8.11.3"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
