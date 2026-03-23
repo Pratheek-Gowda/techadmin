@@ -65,7 +65,7 @@
         let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
         let adminData = { adminWallet: 0, marqueeText: 'Loading...', transactions: [] };
         let usersData = [];
-        let fundRequests = []; // Kept in memory for prototype
+        let fundRequests = [];
 
         // Helper to show loading state
         function setLoading(isLoading) {
@@ -123,6 +123,12 @@
                 
                 adminData = adminRes;
                 usersData = usersRes.users;
+
+                // Fetch live pending requests if Admin
+                if (currentUser.role === 'admin') {
+                    const reqRes = await apiCall('/api/requests');
+                    fundRequests = reqRes.requests;
+                }
                 
                 // Refresh currentUser balance if they are a regular user
                 if (currentUser.role === 'user') {
@@ -235,12 +241,16 @@
 
             if(transactionsHtml === '') transactionsHtml = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No transactions recorded yet.</td></tr>';
 
+            // Displays the live fund requests with Approve/Reject buttons
             let requestsHtml = fundRequests.map(r => `
-                <div class="bg-yellow-50 p-3 rounded border border-yellow-200 mb-2 flex justify-between items-center shadow-sm">
-                    <div class="text-sm">
-                        <span class="font-bold text-gray-800">${r.username}</span> needs <span class="font-bold text-green-600">₹${r.amount}</span>
+                <div class="bg-yellow-50 p-3 rounded border border-yellow-200 mb-2 shadow-sm">
+                    <div class="text-sm mb-2">
+                        <span class="font-bold text-gray-800">${r.username}</span> requested <span class="font-bold text-green-600">₹${r.amount}</span>
                     </div>
-                    <button onclick="dismissRequest('${r.id}')" class="text-gray-500 hover:text-gray-800 bg-white px-2 py-1 rounded border text-xs shadow-sm">Dismiss</button>
+                    <div class="flex gap-2">
+                        <button onclick="handleRequest(${r.id}, ${r.user_id}, ${r.amount}, 'approve')" class="bg-green-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-green-700 flex-1 transition">Approve</button>
+                        <button onclick="handleRequest(${r.id}, ${r.user_id}, ${r.amount}, 'reject')" class="bg-red-100 text-red-700 px-3 py-1 rounded text-xs font-bold hover:bg-red-200 transition">Reject</button>
+                    </div>
                 </div>
             `).join('') || '<p class="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded border border-dashed">No pending requests.</p>';
 
@@ -293,7 +303,10 @@
 
                         <!-- Transaction History -->
                         <div class="bg-white p-6 rounded-xl shadow-md">
-                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-gray-700"><i data-lucide="history" class="text-blue-500"></i> Global Transaction History</h2>
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-bold flex items-center gap-2 text-gray-700"><i data-lucide="history" class="text-blue-500"></i> Global Transaction History</h2>
+                                <button onclick="loadData()" class="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm bg-blue-50 px-2 py-1 rounded"><i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh Data</button>
+                            </div>
                             <div class="overflow-x-auto h-80 overflow-y-auto border rounded-lg relative">
                                 <table class="w-full text-left border-collapse text-sm">
                                     <thead class="sticky top-0 bg-gray-100 shadow-sm z-10">
@@ -317,7 +330,7 @@
                         <!-- Fund Requests -->
                         <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-yellow-400">
                             <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-gray-700"><i data-lucide="bell" class="text-yellow-500"></i> Live Fund Requests</h2>
-                            <div class="max-h-64 overflow-y-auto pr-1">
+                            <div class="max-h-80 overflow-y-auto pr-1">
                                 ${requestsHtml}
                             </div>
                         </div>
@@ -354,8 +367,6 @@
             
             let userTransactionsHtml = userTx.map(t => {
                 const date = new Date(t.created_at).toLocaleString();
-                // If it's a Credit FROM admin, to the user it's money incoming (+)
-                // If it's a Debit BY admin, to the user it's money outgoing (-)
                 const isIncoming = t.type === 'Credit';
                 
                 return `
@@ -404,7 +415,7 @@
                                 <h3 class="font-bold text-gray-700 mb-3 text-sm text-left flex items-center gap-1"><i data-lucide="hand-coins" class="w-4 h-4"></i> Request Funds</h3>
                                 <div class="flex flex-col gap-2">
                                     <input type="number" id="request-amount" placeholder="Amount (₹)" class="border border-gray-300 p-2 rounded w-full outline-none focus:ring-2 focus:ring-blue-500">
-                                    <button onclick="requestFunds('${currentUser.username}')" class="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700 w-full flex justify-center items-center gap-2 transition shadow-sm">
+                                    <button onclick="requestFunds()" class="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700 w-full flex justify-center items-center gap-2 transition shadow-sm">
                                         <i data-lucide="send" class="w-4 h-4"></i> Send Request
                                     </button>
                                 </div>
@@ -417,8 +428,8 @@
                             <h2 class="text-lg font-bold mb-4 flex items-center gap-2 border-b border-gray-700 pb-2 relative z-10"><i data-lucide="headset"></i> Support & Contact</h2>
                             <p class="text-sm mb-4 text-gray-400 relative z-10 leading-relaxed">For urgent queries, technical issues, or manual top-ups, please reach out to the administrator.</p>
                             <ul class="space-y-3 text-sm mt-4 relative z-10">
-                                <li class="flex items-center gap-3 bg-gray-800 p-2 rounded"><i data-lucide="mail" class="w-5 h-5 text-blue-400"></i> admin@pratheekenterprises.tech</li>
-                                <li class="flex items-center gap-3 bg-gray-800 p-2 rounded"><i data-lucide="phone-call" class="w-5 h-5 text-green-400"></i> +91 98765 43210</li>
+                                <li class="flex items-center gap-3 bg-gray-800 p-2 rounded"><i data-lucide="mail" class="w-5 h-5 text-blue-400"></i> pratheek@myyahoo.com</li>
+                                <li class="flex items-center gap-3 bg-gray-800 p-2 rounded"><i data-lucide="phone-call" class="w-5 h-5 text-green-400"></i> +91 9164132150</li>
                             </ul>
                         </div>
                     </div>
@@ -469,13 +480,14 @@
             try {
                 await apiCall('/api/admin', 'PUT', { amount: amt, action });
                 showToast(`Admin Wallet updated successfully`, 'success');
+                document.getElementById('admin-wallet-amount').value = '';
                 await loadData();
             } catch (err) {}
         }
 
         window.handleCreditDebit = async function(userId, username, type) {
             const rawAmt = prompt(`Enter amount to ${type} for ${username}:`);
-            if (rawAmt === null) return; // cancelled
+            if (rawAmt === null) return; 
             const amt = parseInt(rawAmt);
             if (!amt || amt <= 0) return showToast('Invalid amount', 'error');
 
@@ -510,39 +522,55 @@
             } catch(err) {}
         }
 
-        window.dismissRequest = function(reqId) {
-            fundRequests = fundRequests.filter(r => r.id !== reqId);
-            render();
+        // Handle Approve/Reject Requests (Admin)
+        // This triggers the server logic to deduct from Admin and credit to User automatically
+        window.handleRequest = async function(requestId, userId, amount, action) {
+            try {
+                await apiCall('/api/requests', 'PUT', { requestId, userId, amount, action });
+                showToast(`Request ${action}d successfully`, 'success');
+                await loadData(); // Instantly refreshes balances and tables
+            } catch (err) {}
         }
 
         /* --- User Actions --- */
-        window.requestFunds = function(username) {
+        window.requestFunds = async function() {
             const amt = parseInt(document.getElementById('request-amount').value);
-            if (!amt || amt <= 0) return showToast('Enter a valid amount to request', 'error');
+            if (!amt || amt <= 0) return showToast('Enter a valid amount', 'error');
             
-            fundRequests.push({
-                id: Math.random().toString(36).substr(2, 9),
-                username: username,
-                amount: amt
-            });
-            
-            showToast('Fund request pinged to Admin Dashboard', 'success');
-            document.getElementById('request-amount').value = '';
-            
-            // Re-render UI to clear input box but keep user data
-            render(); 
+            try {
+                await apiCall('/api/requests', 'POST', { userId: currentUser.id, amount: amt });
+                showToast('Fund request sent instantly to Admin', 'success');
+                document.getElementById('request-amount').value = '';
+            } catch (err) {}
         }
 
         // Initialize App
         async function init() {
             if (currentUser) {
-                await loadData(); // Fetch fresh data automatically if a user session exists
+                await loadData();
             } else {
                 render();
             }
         }
         
-        // Start
+        // Background Polling: Auto-refresh the dashboard every 10 seconds if Admin
+        // This keeps checking the fund_requests table for new pending requests.
+        setInterval(() => {
+            if (currentUser && currentUser.role === 'admin') {
+                // Fetch in the background using native fetch to avoid showing the full screen spinner
+                fetch('/api/requests')
+                    .then(res => res.json())
+                    .then(data => {
+                        // If the number of requests changed, update data and render quietly
+                        if (JSON.stringify(data.requests) !== JSON.stringify(fundRequests)) {
+                            fundRequests = data.requests;
+                            render();
+                        }
+                    }).catch(err => console.error(err));
+            }
+        }, 10000);
+
+        // Start App
         init();
 
     </script>
