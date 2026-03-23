@@ -31,6 +31,16 @@
         .toast {
             transition: opacity 0.3s ease-in-out;
         }
+        /* Loading Overlay */
+        #loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
@@ -38,32 +48,31 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="flex flex-col gap-2"></div>
 
+    <!-- Loading Spinner -->
+    <div id="loading-overlay" class="flex flex-col items-center">
+        <i data-lucide="loader" class="animate-spin w-10 h-10 text-blue-600 mb-2"></i>
+        <p class="text-blue-800 font-semibold">Processing...</p>
+    </div>
+
     <!-- Main Application Container -->
     <div id="app"></div>
 
     <script>
         /* ==========================================
-           MOCK DATABASE & STATE (For UI Prototyping)
-           Replace these with fetch() API calls later
-           ========================================== */
-        let state = {
-            currentUser: null, // null, 'admin', or userId
-            adminWallet: 50000,
-            marqueeText: "Welcome to Pratheek Enterprises Subagent Portal. Contact admin for balance top-ups.",
-            users: [
-                { id: 'u1', username: 'user1', password: 'password123', balance: 500 }
-            ],
-            transactions: [
-                { id: 't1', date: new Date().toLocaleString(), type: 'Credit', amount: 500, user: 'user1', desc: 'Initial Deposit' }
-            ],
-            fundRequests: []
-        };
-
-        /* ==========================================
-           UTILITY FUNCTIONS
+           STATE MANAGEMENT & API WRAPPERS
            ========================================== */
         
-        // Custom Toast Notification (Replaces alert())
+        let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
+        let adminData = { adminWallet: 0, marqueeText: 'Loading...', transactions: [] };
+        let usersData = [];
+        let fundRequests = []; // Kept in memory for prototype
+
+        // Helper to show loading state
+        function setLoading(isLoading) {
+            document.getElementById('loading-overlay').style.display = isLoading ? 'flex' : 'none';
+        }
+
+        // Custom Toast Notification
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -81,8 +90,57 @@
             }, 3000);
         }
 
-        function generateId() {
-            return Math.random().toString(36).substr(2, 9);
+        // Generic API Fetcher
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const options = { 
+                method, 
+                headers: { 'Content-Type': 'application/json' } 
+            };
+            if (body) options.body = JSON.stringify(body);
+            
+            setLoading(true);
+            try {
+                const res = await fetch(endpoint, options);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Server error occurred');
+                return data;
+            } catch (err) {
+                showToast(err.message, 'error');
+                throw err;
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Fetch fresh data from backend
+        async function loadData() {
+            if (!currentUser) return;
+            try {
+                const [adminRes, usersRes] = await Promise.all([
+                    apiCall('/api/admin'),
+                    apiCall('/api/users')
+                ]);
+                
+                adminData = adminRes;
+                usersData = usersRes.users;
+                
+                // Refresh currentUser balance if they are a regular user
+                if (currentUser.role === 'user') {
+                    const freshUser = usersData.find(u => u.id === currentUser.id);
+                    if (freshUser) {
+                        currentUser.balance = freshUser.balance;
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    } else {
+                        // User was deleted by admin
+                        logout();
+                        return;
+                    }
+                }
+                
+                render();
+            } catch (error) {
+                console.error("Failed to load data:", error);
+            }
         }
 
         /* ==========================================
@@ -92,9 +150,9 @@
         const app = document.getElementById('app');
 
         function render() {
-            if (!state.currentUser) {
+            if (!currentUser) {
                 renderLogin();
-            } else if (state.currentUser === 'admin') {
+            } else if (currentUser.role === 'admin') {
                 renderAdminDashboard();
             } else {
                 renderUserDashboard();
@@ -106,10 +164,10 @@
         function renderLogin() {
             app.innerHTML = `
                 <div class="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-                    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+                    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md border-t-4 border-blue-600">
                         <div class="text-center mb-8">
                             <h1 class="text-2xl font-bold text-blue-900">Pratheek Enterprises</h1>
-                            <p class="text-gray-500 text-sm mt-2">Login to your account</p>
+                            <p class="text-gray-500 text-sm mt-2">Subagent Portal Login</p>
                         </div>
                         <form id="login-form" class="space-y-4">
                             <div>
@@ -124,78 +182,73 @@
                                 Sign In
                             </button>
                         </form>
-                        <div class="mt-4 text-xs text-gray-400 text-center">
-                            Admin Login: admin / admin123<br>
-                            User Login: user1 / password123
-                        </div>
                     </div>
                 </div>
             `;
 
-            document.getElementById('login-form').addEventListener('submit', (e) => {
+            document.getElementById('login-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const u = document.getElementById('username').value;
-                const p = document.getElementById('password').value;
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
 
-                if (u === 'admin' && p === 'admin123') {
-                    state.currentUser = 'admin';
-                    showToast('Welcome Admin', 'success');
-                    render();
-                } else {
-                    const user = state.users.find(usr => usr.username === u && usr.password === p);
-                    if (user) {
-                        state.currentUser = user.id;
-                        showToast(`Welcome ${user.username}`, 'success');
-                        render();
-                    } else {
-                        showToast('Invalid username or password', 'error');
+                try {
+                    const data = await apiCall('/api/login', 'POST', { username, password });
+                    if (data.success) {
+                        currentUser = data.user;
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        showToast(`Welcome ${currentUser.username}`, 'success');
+                        await loadData();
                     }
+                } catch (e) {
+                    // Handled by apiCall
                 }
             });
         }
 
         /* --- ADMIN DASHBOARD --- */
         function renderAdminDashboard() {
-            let usersHtml = state.users.map(u => `
-                <tr class="border-t">
-                    <td class="px-4 py-2">${u.username}</td>
-                    <td class="px-4 py-2 font-mono text-sm">${u.password}</td>
-                    <td class="px-4 py-2 font-bold text-green-600">₹${u.balance}</td>
-                    <td class="px-4 py-2 flex gap-2">
-                        <button onclick="handleCreditDebit('${u.id}', 'Credit')" class="bg-green-100 text-green-700 px-2 py-1 rounded text-sm hover:bg-green-200">Credit</button>
-                        <button onclick="handleCreditDebit('${u.id}', 'Debit')" class="bg-red-100 text-red-700 px-2 py-1 rounded text-sm hover:bg-red-200">Debit</button>
-                        <button onclick="handleDeleteUser('${u.id}')" class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-200"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            let usersHtml = usersData.map(u => `
+                <tr class="border-t hover:bg-gray-50">
+                    <td class="px-4 py-3 font-medium">${u.username}</td>
+                    <td class="px-4 py-3 font-bold text-green-600">₹${u.balance}</td>
+                    <td class="px-4 py-3 flex gap-2">
+                        <button onclick="handleCreditDebit(${u.id}, '${u.username}', 'Credit')" class="bg-green-100 text-green-700 px-3 py-1 rounded text-sm hover:bg-green-200 shadow-sm font-semibold">Credit</button>
+                        <button onclick="handleCreditDebit(${u.id}, '${u.username}', 'Debit')" class="bg-red-100 text-red-700 px-3 py-1 rounded text-sm hover:bg-red-200 shadow-sm font-semibold">Debit</button>
+                        <button onclick="handleDeleteUser(${u.id}, '${u.username}')" class="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300 shadow-sm"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </td>
                 </tr>
             `).join('');
 
-            let transactionsHtml = state.transactions.map(t => `
-                <tr class="border-t">
-                    <td class="px-4 py-2 text-xs text-gray-500">${t.date}</td>
-                    <td class="px-4 py-2">${t.user || 'Admin'}</td>
-                    <td class="px-4 py-2"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${t.type === 'Credit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${t.type}</span></td>
-                    <td class="px-4 py-2">₹${t.amount}</td>
-                    <td class="px-4 py-2 text-sm">${t.desc}</td>
-                    <td class="px-4 py-2">
-                        <button onclick="handleDeleteTransaction('${t.id}')" class="text-red-500 hover:text-red-700"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
-                    </td>
-                </tr>
-            `).join('');
+            if(usersHtml === '') usersHtml = '<tr><td colspan="3" class="p-4 text-center text-gray-500">No users found. Add one above!</td></tr>';
 
-            let requestsHtml = state.fundRequests.map(r => `
-                <div class="bg-yellow-50 p-3 rounded border border-yellow-200 mb-2 flex justify-between items-center">
-                    <div>
-                        <span class="font-bold">${r.username}</span> requested <span class="font-bold text-green-600">₹${r.amount}</span>
+            let transactionsHtml = adminData.transactions.map(t => {
+                const date = new Date(t.created_at).toLocaleString();
+                return `
+                <tr class="border-t hover:bg-gray-50">
+                    <td class="px-4 py-2 text-xs text-gray-500">${date}</td>
+                    <td class="px-4 py-2 font-medium">${t.user || 'System'}</td>
+                    <td class="px-4 py-2"><span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-md ${t.type === 'Credit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${t.type}</span></td>
+                    <td class="px-4 py-2 font-bold ${t.type === 'Credit' ? 'text-green-600' : 'text-red-600'}">₹${t.amount}</td>
+                    <td class="px-4 py-2 text-sm text-gray-600">${t.description}</td>
+                </tr>
+            `}).join('');
+
+            if(transactionsHtml === '') transactionsHtml = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No transactions recorded yet.</td></tr>';
+
+            let requestsHtml = fundRequests.map(r => `
+                <div class="bg-yellow-50 p-3 rounded border border-yellow-200 mb-2 flex justify-between items-center shadow-sm">
+                    <div class="text-sm">
+                        <span class="font-bold text-gray-800">${r.username}</span> needs <span class="font-bold text-green-600">₹${r.amount}</span>
                     </div>
-                    <button onclick="dismissRequest('${r.id}')" class="text-gray-500 hover:text-gray-800 text-sm">Dismiss</button>
+                    <button onclick="dismissRequest('${r.id}')" class="text-gray-500 hover:text-gray-800 bg-white px-2 py-1 rounded border text-xs shadow-sm">Dismiss</button>
                 </div>
-            `).join('') || '<p class="text-gray-500 text-sm">No pending requests.</p>';
+            `).join('') || '<p class="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded border border-dashed">No pending requests.</p>';
 
             app.innerHTML = `
                 <!-- Navbar -->
-                <nav class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center">
-                    <h1 class="text-xl font-bold">Admin Portal | Pratheek Enterprises</h1>
-                    <button onclick="logout()" class="flex items-center gap-1 hover:text-blue-200"><i data-lucide="log-out" class="w-4 h-4"></i> Logout</button>
+                <nav class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center sticky top-0 z-40">
+                    <h1 class="text-xl font-bold flex items-center gap-2"><i data-lucide="shield-check"></i> Admin Portal</h1>
+                    <button onclick="logout()" class="flex items-center gap-1 hover:text-blue-200 bg-blue-800 px-3 py-1 rounded transition"><i data-lucide="log-out" class="w-4 h-4"></i> Logout</button>
                 </nav>
 
                 <div class="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
@@ -204,34 +257,33 @@
                     <div class="lg:col-span-2 space-y-6">
                         
                         <!-- Admin Wallet Card -->
-                        <div class="bg-white p-6 rounded-lg shadow border-t-4 border-blue-500">
-                            <h2 class="text-lg font-bold mb-2 flex items-center gap-2"><i data-lucide="wallet"></i> Master Admin Wallet</h2>
-                            <div class="text-4xl font-black text-blue-900 mb-4">₹${state.adminWallet}</div>
-                            <div class="flex gap-2">
-                                <input type="number" id="admin-wallet-amount" placeholder="Amount" class="border p-2 rounded w-32">
-                                <button onclick="updateAdminWallet('add')" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Add Funds</button>
-                                <button onclick="updateAdminWallet('remove')" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Withdraw</button>
+                        <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-500">
+                            <h2 class="text-lg font-bold mb-2 flex items-center gap-2 text-gray-700"><i data-lucide="wallet" class="text-blue-500"></i> Master Admin Wallet</h2>
+                            <div class="text-4xl font-black text-blue-900 mb-4 tracking-tight">₹${Number(adminData.adminWallet).toLocaleString('en-IN')}</div>
+                            <div class="flex gap-2 bg-gray-50 p-3 rounded-lg border">
+                                <input type="number" id="admin-wallet-amount" placeholder="Amount (₹)" class="border border-gray-300 p-2 rounded flex-1 focus:ring-2 focus:ring-blue-500 outline-none">
+                                <button onclick="updateAdminWallet('add')" class="bg-green-600 text-white px-4 py-2 rounded font-semibold hover:bg-green-700 shadow-sm transition">Add</button>
+                                <button onclick="updateAdminWallet('remove')" class="bg-red-600 text-white px-4 py-2 rounded font-semibold hover:bg-red-700 shadow-sm transition">Withdraw</button>
                             </div>
                         </div>
 
                         <!-- User Management -->
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><i data-lucide="users"></i> Manage Users</h2>
+                        <div class="bg-white p-6 rounded-xl shadow-md">
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-gray-700"><i data-lucide="users" class="text-blue-500"></i> Manage Subagents</h2>
                             
-                            <form id="add-user-form" class="flex gap-2 mb-6">
-                                <input type="text" id="new-username" placeholder="New Username" class="border p-2 rounded flex-1" required>
-                                <input type="text" id="new-password" placeholder="Password" class="border p-2 rounded flex-1" required>
-                                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add User</button>
+                            <form id="add-user-form" class="flex gap-2 mb-6 bg-gray-50 p-3 rounded-lg border">
+                                <input type="text" id="new-username" placeholder="New Username" class="border border-gray-300 p-2 rounded flex-1 outline-none focus:ring-2 focus:ring-blue-500" required>
+                                <input type="text" id="new-password" placeholder="Password" class="border border-gray-300 p-2 rounded flex-1 outline-none focus:ring-2 focus:ring-blue-500" required>
+                                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700 shadow-sm transition">Add User</button>
                             </form>
 
-                            <div class="overflow-x-auto">
+                            <div class="overflow-x-auto border rounded-lg">
                                 <table class="w-full text-left border-collapse">
                                     <thead>
-                                        <tr class="bg-gray-100">
-                                            <th class="px-4 py-2">Username</th>
-                                            <th class="px-4 py-2">Password</th>
-                                            <th class="px-4 py-2">Wallet Balance</th>
-                                            <th class="px-4 py-2">Actions</th>
+                                        <tr class="bg-gray-100 text-gray-600 text-sm">
+                                            <th class="px-4 py-3 font-semibold">Username</th>
+                                            <th class="px-4 py-3 font-semibold">Wallet Balance</th>
+                                            <th class="px-4 py-3 font-semibold">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>${usersHtml}</tbody>
@@ -240,18 +292,17 @@
                         </div>
 
                         <!-- Transaction History -->
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><i data-lucide="history"></i> System Transaction History</h2>
-                            <div class="overflow-x-auto h-64 overflow-y-auto">
+                        <div class="bg-white p-6 rounded-xl shadow-md">
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-gray-700"><i data-lucide="history" class="text-blue-500"></i> Global Transaction History</h2>
+                            <div class="overflow-x-auto h-80 overflow-y-auto border rounded-lg relative">
                                 <table class="w-full text-left border-collapse text-sm">
-                                    <thead class="sticky top-0 bg-white shadow-sm">
-                                        <tr class="bg-gray-50">
-                                            <th class="px-4 py-2">Date</th>
-                                            <th class="px-4 py-2">User</th>
-                                            <th class="px-4 py-2">Type</th>
-                                            <th class="px-4 py-2">Amount</th>
-                                            <th class="px-4 py-2">Description</th>
-                                            <th class="px-4 py-2">Del</th>
+                                    <thead class="sticky top-0 bg-gray-100 shadow-sm z-10">
+                                        <tr class="text-gray-600">
+                                            <th class="px-4 py-3 font-semibold">Date</th>
+                                            <th class="px-4 py-3 font-semibold">User</th>
+                                            <th class="px-4 py-3 font-semibold">Type</th>
+                                            <th class="px-4 py-3 font-semibold">Amount</th>
+                                            <th class="px-4 py-3 font-semibold">Description</th>
                                         </tr>
                                     </thead>
                                     <tbody>${transactionsHtml}</tbody>
@@ -264,16 +315,18 @@
                     <div class="space-y-6">
                         
                         <!-- Fund Requests -->
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><i data-lucide="bell"></i> Fund Requests</h2>
-                            ${requestsHtml}
+                        <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-yellow-400">
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-gray-700"><i data-lucide="bell" class="text-yellow-500"></i> Live Fund Requests</h2>
+                            <div class="max-h-64 overflow-y-auto pr-1">
+                                ${requestsHtml}
+                            </div>
                         </div>
 
                         <!-- Notification Settings -->
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><i data-lucide="megaphone"></i> Daily Notification Bar</h2>
-                            <textarea id="marquee-input" class="w-full border p-2 rounded h-24 mb-2">${state.marqueeText}</textarea>
-                            <button onclick="updateMarquee()" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Update Marquee Display</button>
+                        <div class="bg-white p-6 rounded-xl shadow-md">
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-gray-700"><i data-lucide="megaphone" class="text-blue-500"></i> Daily Marquee Alert</h2>
+                            <textarea id="marquee-input" class="w-full border border-gray-300 p-3 rounded-lg h-24 mb-3 outline-none focus:ring-2 focus:ring-blue-500 text-sm">${adminData.marqueeText}</textarea>
+                            <button onclick="updateMarquee()" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 shadow-sm transition">Publish Announcement</button>
                         </div>
 
                     </div>
@@ -281,88 +334,108 @@
             `;
 
             // Event Listeners for Admin UI
-            document.getElementById('add-user-form').addEventListener('submit', (e) => {
+            document.getElementById('add-user-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const u = document.getElementById('new-username').value;
-                const p = document.getElementById('new-password').value;
-                if(state.users.find(usr => usr.username === u)) {
-                    showToast('Username already exists', 'error');
-                    return;
-                }
-                state.users.push({ id: generateId(), username: u, password: p, balance: 0 });
-                showToast('User created successfully', 'success');
-                render();
+                const username = document.getElementById('new-username').value;
+                const password = document.getElementById('new-password').value;
+                
+                try {
+                    await apiCall('/api/users', 'POST', { username, password });
+                    showToast('User created successfully', 'success');
+                    await loadData();
+                } catch (err) {}
             });
         }
 
         /* --- USER DASHBOARD --- */
         function renderUserDashboard() {
-            const user = state.users.find(u => u.id === state.currentUser);
-            if (!user) return logout();
+            // Filter transactions strictly for this user
+            const userTx = adminData.transactions.filter(t => t.user === currentUser.username);
+            
+            let userTransactionsHtml = userTx.map(t => {
+                const date = new Date(t.created_at).toLocaleString();
+                // If it's a Credit FROM admin, to the user it's money incoming (+)
+                // If it's a Debit BY admin, to the user it's money outgoing (-)
+                const isIncoming = t.type === 'Credit';
+                
+                return `
+                <tr class="border-t hover:bg-gray-50">
+                    <td class="px-4 py-3 text-xs text-gray-500">${date}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-md ${isIncoming ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            ${isIncoming ? 'Received' : 'Deducted'}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 font-bold ${isIncoming ? 'text-green-600' : 'text-red-600'}">
+                        ${isIncoming ? '+' : '-'}₹${t.amount}
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${t.description}</td>
+                </tr>
+            `}).join('');
 
-            let userTransactionsHtml = state.transactions
-                .filter(t => t.user === user.username)
-                .map(t => `
-                    <tr class="border-t">
-                        <td class="px-4 py-2 text-xs text-gray-500">${t.date}</td>
-                        <td class="px-4 py-2"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${t.type === 'Credit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${t.type}</span></td>
-                        <td class="px-4 py-2 font-bold ${t.type === 'Credit' ? 'text-green-600' : 'text-red-600'}">₹${t.amount}</td>
-                        <td class="px-4 py-2 text-sm">${t.desc}</td>
-                    </tr>
-                `).join('');
-
-            if(userTransactionsHtml === '') userTransactionsHtml = '<tr><td colspan="4" class="p-4 text-center text-gray-500">No transactions yet.</td></tr>';
+            if(userTransactionsHtml === '') userTransactionsHtml = '<tr><td colspan="4" class="p-6 text-center text-gray-500 bg-gray-50">No recent activity.</td></tr>';
 
             app.innerHTML = `
                 <!-- Marquee Notification -->
-                <div class="bg-yellow-400 text-yellow-900 py-2 marquee-container font-semibold shadow">
-                    <div class="marquee-content w-full">${state.marqueeText}</div>
+                <div class="bg-yellow-400 text-yellow-900 py-2 marquee-container font-semibold shadow-sm border-b border-yellow-500">
+                    <div class="marquee-content w-full">${adminData.marqueeText}</div>
                 </div>
 
                 <!-- Navbar -->
-                <nav class="bg-blue-800 text-white p-4 shadow-md flex justify-between items-center">
-                    <h1 class="text-xl font-bold flex items-center gap-2"><i data-lucide="user"></i> Subagent: ${user.username}</h1>
-                    <button onclick="logout()" class="flex items-center gap-1 hover:text-blue-200"><i data-lucide="log-out" class="w-4 h-4"></i> Logout</button>
+                <nav class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center sticky top-0 z-40">
+                    <h1 class="text-xl font-bold flex items-center gap-2"><i data-lucide="user-circle"></i> ${currentUser.username}'s Portal</h1>
+                    <button onclick="logout()" class="flex items-center gap-1 hover:text-blue-200 bg-blue-800 px-3 py-1 rounded transition"><i data-lucide="log-out" class="w-4 h-4"></i> Logout</button>
                 </nav>
 
-                <div class="max-w-5xl mx-auto p-4 grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                <div class="max-w-6xl mx-auto p-4 grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                     
-                    <!-- Wallet Info -->
+                    <!-- Wallet Info Column -->
                     <div class="md:col-span-1 space-y-6">
-                        <div class="bg-white p-6 rounded-lg shadow-lg border-t-4 border-green-500 text-center">
-                            <h2 class="text-gray-500 font-bold mb-2 uppercase text-sm">Your Wallet Balance</h2>
-                            <div class="text-5xl font-black text-green-600 mb-6">₹${user.balance}</div>
+                        <!-- Balance Card -->
+                        <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-green-500 text-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-4 opacity-10"><i data-lucide="wallet" class="w-16 h-16"></i></div>
+                            <h2 class="text-gray-500 font-bold mb-2 uppercase text-sm tracking-wider">Current Balance</h2>
+                            <div class="text-5xl font-black text-green-600 mb-6 drop-shadow-sm">₹${Number(currentUser.balance).toLocaleString('en-IN')}</div>
                             
-                            <hr class="mb-4">
+                            <hr class="mb-4 border-gray-100">
                             
-                            <h3 class="font-bold text-gray-700 mb-2">Request Funds</h3>
-                            <div class="flex flex-col gap-2">
-                                <input type="number" id="request-amount" placeholder="Amount needed" class="border p-2 rounded w-full">
-                                <button onclick="requestFunds('${user.username}')" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full flex justify-center items-center gap-2"><i data-lucide="send" class="w-4 h-4"></i> Send Request</button>
+                            <!-- Fund Request Box -->
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                                <h3 class="font-bold text-gray-700 mb-3 text-sm text-left flex items-center gap-1"><i data-lucide="hand-coins" class="w-4 h-4"></i> Request Funds</h3>
+                                <div class="flex flex-col gap-2">
+                                    <input type="number" id="request-amount" placeholder="Amount (₹)" class="border border-gray-300 p-2 rounded w-full outline-none focus:ring-2 focus:ring-blue-500">
+                                    <button onclick="requestFunds('${currentUser.username}')" class="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700 w-full flex justify-center items-center gap-2 transition shadow-sm">
+                                        <i data-lucide="send" class="w-4 h-4"></i> Send Request
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Admin Contact -->
-                        <div class="bg-gray-800 text-white p-6 rounded-lg shadow-lg">
-                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2 border-b border-gray-600 pb-2"><i data-lucide="phone"></i> Admin Contact</h2>
-                            <p class="text-sm mb-2 text-gray-300">For urgent queries or manual top-ups, please contact the administrator.</p>
-                            <ul class="space-y-2 text-sm mt-4">
-                                <li class="flex items-center gap-2"><i data-lucide="mail" class="w-4 h-4 text-blue-400"></i> admin@pratheekenterprises.tech</li>
-                                <li class="flex items-center gap-2"><i data-lucide="phone-call" class="w-4 h-4 text-green-400"></i> +91 98765 43210</li>
+                        <div class="bg-gray-900 text-white p-6 rounded-xl shadow-lg relative overflow-hidden">
+                            <div class="absolute -bottom-4 -right-4 opacity-10"><i data-lucide="phone" class="w-32 h-32"></i></div>
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2 border-b border-gray-700 pb-2 relative z-10"><i data-lucide="headset"></i> Support & Contact</h2>
+                            <p class="text-sm mb-4 text-gray-400 relative z-10 leading-relaxed">For urgent queries, technical issues, or manual top-ups, please reach out to the administrator.</p>
+                            <ul class="space-y-3 text-sm mt-4 relative z-10">
+                                <li class="flex items-center gap-3 bg-gray-800 p-2 rounded"><i data-lucide="mail" class="w-5 h-5 text-blue-400"></i> admin@pratheekenterprises.tech</li>
+                                <li class="flex items-center gap-3 bg-gray-800 p-2 rounded"><i data-lucide="phone-call" class="w-5 h-5 text-green-400"></i> +91 98765 43210</li>
                             </ul>
                         </div>
                     </div>
 
-                    <!-- Transaction History -->
+                    <!-- Transaction History Column -->
                     <div class="md:col-span-2">
-                        <div class="bg-white p-6 rounded-lg shadow-lg h-full">
-                            <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800"><i data-lucide="list"></i> Wallet History</h2>
-                            <div class="overflow-x-auto border rounded">
+                        <div class="bg-white p-6 rounded-xl shadow-lg h-full border border-gray-100">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><i data-lucide="list-ordered" class="text-blue-600"></i> Wallet Passbook</h2>
+                                <button onclick="loadData()" class="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm bg-blue-50 px-2 py-1 rounded"><i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh</button>
+                            </div>
+                            <div class="overflow-x-auto border rounded-lg h-[500px] overflow-y-auto">
                                 <table class="w-full text-left border-collapse">
-                                    <thead class="bg-gray-100">
+                                    <thead class="bg-gray-100 sticky top-0 shadow-sm z-10">
                                         <tr>
                                             <th class="px-4 py-3 text-gray-600 font-semibold text-sm">Date & Time</th>
-                                            <th class="px-4 py-3 text-gray-600 font-semibold text-sm">Type</th>
+                                            <th class="px-4 py-3 text-gray-600 font-semibold text-sm">Status</th>
                                             <th class="px-4 py-3 text-gray-600 font-semibold text-sm">Amount</th>
                                             <th class="px-4 py-3 text-gray-600 font-semibold text-sm">Description</th>
                                         </tr>
@@ -378,100 +451,67 @@
         }
 
         /* ==========================================
-           ACTION HANDLERS (Simulating Database logic)
+           ACTION HANDLERS (Calling real APIs)
            ========================================== */
 
         window.logout = function() {
-            state.currentUser = null;
+            localStorage.removeItem('currentUser');
+            currentUser = null;
             showToast('Logged out successfully');
             render();
         }
 
         /* --- Admin Actions --- */
-        window.updateAdminWallet = function(action) {
-            const amt = parseInt(document.getElementById('admin-wallet-amount').value);
+        window.updateAdminWallet = async function(action) {
+            const amt = document.getElementById('admin-wallet-amount').value;
             if (!amt || amt <= 0) return showToast('Enter a valid amount', 'error');
             
-            if (action === 'add') {
-                state.adminWallet += amt;
-                state.transactions.push({ id: generateId(), date: new Date().toLocaleString(), type: 'Credit', amount: amt, user: 'Admin', desc: 'Manual addition to Admin Wallet' });
-                showToast(`Added ₹${amt} to Admin Wallet`, 'success');
-            } else {
-                if(state.adminWallet < amt) return showToast('Insufficient admin funds', 'error');
-                state.adminWallet -= amt;
-                state.transactions.push({ id: generateId(), date: new Date().toLocaleString(), type: 'Debit', amount: amt, user: 'Admin', desc: 'Manual withdrawal from Admin Wallet' });
-                showToast(`Withdrew ₹${amt} from Admin Wallet`, 'success');
-            }
-            render();
+            try {
+                await apiCall('/api/admin', 'PUT', { amount: amt, action });
+                showToast(`Admin Wallet updated successfully`, 'success');
+                await loadData();
+            } catch (err) {}
         }
 
-        window.handleCreditDebit = function(userId, type) {
-            const user = state.users.find(u => u.id === userId);
-            const rawAmt = prompt(`Enter amount to ${type} for ${user.username}:`);
+        window.handleCreditDebit = async function(userId, username, type) {
+            const rawAmt = prompt(`Enter amount to ${type} for ${username}:`);
+            if (rawAmt === null) return; // cancelled
             const amt = parseInt(rawAmt);
-            
-            if (!amt || amt <= 0) return;
+            if (!amt || amt <= 0) return showToast('Invalid amount', 'error');
 
-            if (type === 'Credit') {
-                if (state.adminWallet < amt) return showToast('Not enough funds in Admin Wallet', 'error');
-                state.adminWallet -= amt;
-                user.balance += amt;
-                showToast(`Credited ₹${amt} to ${user.username}`, 'success');
-            } else if (type === 'Debit') {
-                if (user.balance < amt) return showToast('User does not have enough balance to debit', 'error');
-                state.adminWallet += amt;
-                user.balance -= amt;
-                showToast(`Debited ₹${amt} from ${user.username}`, 'success');
-            }
-
-            state.transactions.push({
-                id: generateId(),
-                date: new Date().toLocaleString(),
-                type: type,
-                amount: amt,
-                user: user.username,
-                desc: `Admin ${type} via Dashboard`
-            });
-            render();
-        }
-
-        window.handleDeleteUser = function(userId) {
-            const user = state.users.find(u => u.id === userId);
-            if (confirm(`Are you sure you want to delete ${user.username}? Any remaining balance (₹${user.balance}) will be returned to Admin.`)) {
-                state.adminWallet += user.balance; // Refund to admin
-                state.users = state.users.filter(u => u.id !== userId);
-                
-                state.transactions.push({
-                    id: generateId(),
-                    date: new Date().toLocaleString(),
-                    type: 'Credit',
-                    amount: user.balance,
-                    user: 'Admin',
-                    desc: `Refund from deleted user: ${user.username}`
+            try {
+                await apiCall('/api/wallet', 'POST', { 
+                    userId, 
+                    amount: amt, 
+                    action: type,
+                    description: `Admin manual ${type.toLowerCase()}` 
                 });
-
-                showToast(`User deleted. ₹${user.balance} returned to Admin.`, 'info');
-                render();
-            }
+                showToast(`Successfully ${type === 'Credit' ? 'credited to' : 'debited from'} ${username}`, 'success');
+                await loadData();
+            } catch(err) {}
         }
 
-        window.handleDeleteTransaction = function(txId) {
-            if(confirm("Delete this transaction? (This purely removes the history record, it does not refund money).")) {
-                state.transactions = state.transactions.filter(t => t.id !== txId);
-                showToast('History record deleted');
-                render();
-            }
+        window.handleDeleteUser = async function(userId, username) {
+            if (!confirm(`Are you sure you want to permanently delete ${username}? Their remaining balance will be returned to the Admin Wallet.`)) return;
+            
+            try {
+                const res = await apiCall(`/api/users?id=${userId}`, 'DELETE');
+                showToast(`User deleted. ₹${res.refunded || 0} returned.`, 'info');
+                await loadData();
+            } catch (err) {}
         }
 
-        window.updateMarquee = function() {
+        window.updateMarquee = async function() {
             const text = document.getElementById('marquee-input').value;
-            state.marqueeText = text;
-            showToast('Notification updated successfully', 'success');
-            render();
+            try {
+                await apiCall('/api/admin', 'POST', { marqueeText: text });
+                showToast('Notification updated globally', 'success');
+                await loadData();
+            } catch(err) {}
         }
 
         window.dismissRequest = function(reqId) {
-            state.fundRequests = state.fundRequests.filter(r => r.id !== reqId);
+            fundRequests = fundRequests.filter(r => r.id !== reqId);
             render();
         }
 
@@ -480,19 +520,30 @@
             const amt = parseInt(document.getElementById('request-amount').value);
             if (!amt || amt <= 0) return showToast('Enter a valid amount to request', 'error');
             
-            state.fundRequests.push({
-                id: generateId(),
+            fundRequests.push({
+                id: Math.random().toString(36).substr(2, 9),
                 username: username,
                 amount: amt
             });
             
-            showToast('Fund request sent to Admin', 'success');
+            showToast('Fund request pinged to Admin Dashboard', 'success');
             document.getElementById('request-amount').value = '';
-            render();
+            
+            // Re-render UI to clear input box but keep user data
+            render(); 
         }
 
-        // Initial Render
-        render();
+        // Initialize App
+        async function init() {
+            if (currentUser) {
+                await loadData(); // Fetch fresh data automatically if a user session exists
+            } else {
+                render();
+            }
+        }
+        
+        // Start
+        init();
 
     </script>
 </body>
