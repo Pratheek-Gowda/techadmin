@@ -32,7 +32,7 @@ export default async function handler(req, res) {
       
       await client.query('BEGIN');
 
-      // Mark request as completed
+      // Mark request as completed (approved or rejected)
       await client.query("UPDATE fund_requests SET status = $1 WHERE id = $2", [action, requestId]);
 
       if (action === 'approve') {
@@ -53,6 +53,8 @@ export default async function handler(req, res) {
 
       await client.query('COMMIT');
       return res.status(200).json({ success: true });
+    } else {
+        return res.status(405).json({ error: 'Method not allowed' });
     }
 
   } catch (error) {
