@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pratheek Enterprises - Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <div class="bg-blue-700 text-white py-2 shadow-md">
+        <marquee behavior="scroll" direction="left" class="font-medium">
+            ⚠️ Update: New Commission rates for Jio and VI updated in the portal. Contact Pratheek for bulk fund requests.
+        </marquee>
+    </div>
+
+    <div class="max-w-6xl mx-auto p-4">
+        <header class="flex justify-between items-center py-6">
+            <h1 class="text-2xl font-bold text-gray-800">Pratheek Enterprises <span class="text-blue-600 text-sm">v1.0</span></h1>
+            <button class="bg-red-500 text-white px-4 py-1 rounded text-sm">Logout</button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-500 uppercase">User Wallet Balance</p>
+                            <h2 class="text-4xl font-bold text-gray-900">₹ 2,450.00</h2>
+                        </div>
+                        <i class="fas fa-wallet text-4xl text-gray-200"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                        <h3 class="font-bold">Transaction History</h3>
+                        <button class="text-blue-600 text-sm font-semibold">+ Request Funds</button>
+                    </div>
+                    <div class="p-0">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="bg-gray-100 text-gray-600">
+                                    <th class="p-3">Date</th>
+                                    <th class="p-3">Description</th>
+                                    <th class="p-3">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                <tr>
+                                    <td class="p-3 text-gray-500">23 Mar</td>
+                                    <td class="p-3">Fund Added by Admin</td>
+                                    <td class="p-3 text-green-600 font-bold">+₹500</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3 text-gray-500">22 Mar</td>
+                                    <td class="p-3">Jio Recharge Debit</td>
+                                    <td class="p-3 text-red-600 font-bold">-₹239</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="bg-gray-800 text-white p-6 rounded-xl shadow-lg">
+                    <p class="text-xs opacity-70 uppercase tracking-widest">Master Admin Wallet</p>
+                    <h2 class="text-3xl font-mono mt-2">₹ 45,000.00</h2>
+                    <div class="grid grid-cols-2 gap-2 mt-4">
+                        <button class="bg-green-600 hover:bg-green-700 py-2 rounded text-xs">Add Money</button>
+                        <button class="bg-gray-600 hover:bg-gray-700 py-2 rounded text-xs">Debit Self</button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl shadow-sm border">
+                    <h3 class="font-bold text-sm mb-3">Update Marquee Text</h3>
+                    <textarea class="w-full border rounded p-2 text-sm h-20" placeholder="Type new update..."></textarea>
+                    <button class="w-full bg-blue-600 text-white mt-2 py-2 rounded text-sm">Update All Users</button>
+                </div>
+
+                <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm">
+                    <h3 class="font-bold text-blue-800 mb-2">Admin Support</h3>
+                    <p class="text-blue-700"><i class="fas fa-user mr-2"></i> Pratheek</p>
+                    <p class="text-blue-700"><i class="fas fa-phone mr-2"></i> +91 9xxxxxxxxx</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 bg-white rounded-xl shadow-sm border p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">Manage Sub-Agents</h3>
+                <button class="bg-black text-white px-4 py-2 rounded-lg text-sm">+ Add New User</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-gray-400 border-b">
+                            <th class="pb-3 px-2">Username</th>
+                            <th class="pb-3 px-2">Password</th>
+                            <th class="pb-3 px-2">Wallet</th>
+                            <th class="pb-3 px-2 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                        <tr>
+                            <td class="py-4 px-2 font-medium">agent_vinay</td>
+                            <td class="py-4 px-2 text-gray-400 font-mono">vinay@123</td>
+                            <td class="py-4 px-2 text-green-600">₹1,250</td>
+                            <td class="py-4 px-2 text-right space-x-2">
+                                <button title="Credit/Debit" class="text-blue-500 hover:text-blue-700"><i class="fas fa-plus-circle"></i></button>
+                                <button title="View Wallet" class="text-gray-500 hover:text-gray-700"><i class="fas fa-eye"></i></button>
+                                <button title="Remove User" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
