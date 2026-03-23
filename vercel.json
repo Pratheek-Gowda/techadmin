@@ -6,6 +6,10 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/password.html",
+      "destination": "/public/password.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/public/index.html"
     }
