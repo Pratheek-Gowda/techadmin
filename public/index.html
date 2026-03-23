@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pratheek Enterprises - Subagent Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom Marquee Animation */
+        .marquee-container {
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+        }
+        .marquee-content {
+            display: inline-block;
+            animation: marquee 15s linear infinite;
+        }
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        /* Toast Notification System */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 50;
+        }
+        .toast {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="flex flex-col gap-2"></div>
+
+    <!-- Main Application Container -->
+    <div id="app"></div>
+
+    <script>
+        /* ==========================================
+           MOCK DATABASE & STATE (For UI Prototyping)
+           Replace these with fetch() API calls later
+           ========================================== */
+        let state = {
+            currentUser: null, // null, 'admin', or userId
+            adminWallet: 50000,
+            marqueeText: "Welcome to Pratheek Enterprises Subagent Portal. Contact admin for balance top-ups.",
+            users: [
+                { id: 'u1', username: 'user1', password: 'password123', balance: 500 }
+            ],
+            transactions: [
+                { id: 't1', date: new Date().toLocaleString(), type: 'Credit', amount: 500, user: 'user1', desc: 'Initial Deposit' }
+            ],
+            fundRequests: []
+        };
+
+        /* ==========================================
+           UTILITY FUNCTIONS
+           ========================================== */
+        
+        // Custom Toast Notification (Replaces alert())
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bg = type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-blue-500';
+            
+            toast.className = `toast ${bg} text-white px-4 py-2 rounded shadow-lg flex items-center gap-2`;
+            toast.innerHTML = `<i data-lucide="${type === 'error' ? 'alert-circle' : 'check-circle'}"></i> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+
+        /* ==========================================
+           RENDERING LOGIC
+           ========================================== */
+        
+        const app = document.getElementById('app');
+
+        function render() {
+            if (!state.currentUser) {
+                renderLogin();
+            } else if (state.currentUser === 'admin') {
+                renderAdminDashboard();
+            } else {
+                renderUserDashboard();
+            }
+            lucide.createIcons();
+        }
+
+        /* --- LOGIN VIEW --- */
+        function renderLogin() {
+            app.innerHTML = `
+                <div class="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+                    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+                        <div class="text-center mb-8">
+                            <h1 class="text-2xl font-bold text-blue-900">Pratheek Enterprises</h1>
+                            <p class="text-gray-500 text-sm mt-2">Login to your account</p>
+                        </div>
+                        <form id="login-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Username</label>
+                                <input type="text" id="username" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Password</label>
+                                <input type="password" id="password" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                            </div>
+                            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                Sign In
+                            </button>
+                        </form>
+                        <div class="mt-4 text-xs text-gray-400 text-center">
+                            Admin Login: admin / admin123<br>
+                            User Login: user1 / password123
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('login-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const u = document.getElementById('username').value;
+                const p = document.getElementById('password').value;
+
+                if (u === 'admin' && p === 'admin123') {
+                    state.currentUser = 'admin';
+                    showToast('Welcome Admin', 'success');
+                    render();
+                } else {
+                    const user = state.users.find(usr => usr.username === u && usr.password === p);
+                    if (user) {
+                        state.currentUser = user.id;
+                        showToast(`Welcome ${user.username}`, 'success');
+                        render();
+                    } else {
+                        showToast('Invalid username or password', 'error');
+                    }
+                }
+            });
+        }
+
+        /* --- ADMIN DASHBOARD --- */
+        function renderAdminDashboard() {
+            let usersHtml = state.users.map(u => `
+                <tr class="border-t">
+                    <td class="px-4 py-2">${u.username}</td>
+                    <td class="px-4 py-2 font-mono text-sm">${u.password}</td>
+                    <td class="px-4 py-2 font-bold text-green-600">₹${u.balance}</td>
+                    <td class="px-4 py-2 flex gap-2">
+                        <button onclick="handleCreditDebit('${u.id}', 'Credit')" class="bg-green-100 text-green-700 px-2 py-1 rounded text-sm hover:bg-green-200">Credit</button>
+                        <button onclick="handleCreditDebit('${u.id}', 'Debit')" class="bg-red-100 text-red-700 px-2 py-1 rounded text-sm hover:bg-red-200">Debit</button>
+                        <button onclick="handleDeleteUser('${u.id}')" class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-200"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+
+            let transactionsHtml = state.transactions.map(t => `
+                <tr class="border-t">
+                    <td class="px-4 py-2 text-xs text-gray-500">${t.date}</td>
+                    <td class="px-4 py-2">${t.user || 'Admin'}</td>
+                    <td class="px-4 py-2"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${t.type === 'Credit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${t.type}</span></td>
+                    <td class="px-4 py-2">₹${t.amount}</td>
+                    <td class="px-4 py-2 text-sm">${t.desc}</td>
+                    <td class="px-4 py-2">
+                        <button onclick="handleDeleteTransaction('${t.id}')" class="text-red-500 hover:text-red-700"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+
+            let requestsHtml = state.fundRequests.map(r => `
+                <div class="bg-yellow-50 p-3 rounded border border-yellow-200 mb-2 flex justify-between items-center">
+                    <div>
+                        <span class="font-bold">${r.username}</span> requested <span class="font-bold text-green-600">₹${r.amount}</span>
+                    </div>
+                    <button onclick="dismissRequest('${r.id}')" class="text-gray-500 hover:text-gray-800 text-sm">Dismiss</button>
+                </div>
+            `).join('') || '<p class="text-gray-500 text-sm">No pending requests.</p>';
+
+            app.innerHTML = `
+                <!-- Navbar -->
+                <nav class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center">
+                    <h1 class="text-xl font-bold">Admin Portal | Pratheek Enterprises</h1>
+                    <button onclick="logout()" class="flex items-center gap-1 hover:text-blue-200"><i data-lucide="log-out" class="w-4 h-4"></i> Logout</button>
+                </nav>
+
+                <div class="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+                    
+                    <!-- Left Column -->
+                    <div class="lg:col-span-2 space-y-6">
+                        
+                        <!-- Admin Wallet Card -->
+                        <div class="bg-white p-6 rounded-lg shadow border-t-4 border-blue-500">
+                            <h2 class="text-lg font-bold mb-2 flex items-center gap-2"><i data-lucide="wallet"></i> Master Admin Wallet</h2>
+                            <div class="text-4xl font-black text-blue-900 mb-4">₹${state.adminWallet}</div>
+                            <div class="flex gap-2">
+                                <input type="number" id="admin-wallet-amount" placeholder="Amount" class="border p-2 rounded w-32">
+                                <button onclick="updateAdminWallet('add')" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Add Funds</button>
+                                <button onclick="updateAdminWallet('remove')" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Withdraw</button>
+                            </div>
+                        </div>
+
+                        <!-- User Management -->
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><i data-lucide="users"></i> Manage Users</h2>
+                            
+                            <form id="add-user-form" class="flex gap-2 mb-6">
+                                <input type="text" id="new-username" placeholder="New Username" class="border p-2 rounded flex-1" required>
+                                <input type="text" id="new-password" placeholder="Password" class="border p-2 rounded flex-1" required>
+                                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add User</button>
+                            </form>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-gray-100">
+                                            <th class="px-4 py-2">Username</th>
+                                            <th class="px-4 py-2">Password</th>
+                                            <th class="px-4 py-2">Wallet Balance</th>
+                                            <th class="px-4 py-2">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>${usersHtml}</tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Transaction History -->
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><i data-lucide="history"></i> System Transaction History</h2>
+                            <div class="overflow-x-auto h-64 overflow-y-auto">
+                                <table class="w-full text-left border-collapse text-sm">
+                                    <thead class="sticky top-0 bg-white shadow-sm">
+                                        <tr class="bg-gray-50">
+                                            <th class="px-4 py-2">Date</th>
+                                            <th class="px-4 py-2">User</th>
+                                            <th class="px-4 py-2">Type</th>
+                                            <th class="px-4 py-2">Amount</th>
+                                            <th class="px-4 py-2">Description</th>
+                                            <th class="px-4 py-2">Del</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>${transactionsHtml}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="space-y-6">
+                        
+                        <!-- Fund Requests -->
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><i data-lucide="bell"></i> Fund Requests</h2>
+                            ${requestsHtml}
+                        </div>
+
+                        <!-- Notification Settings -->
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><i data-lucide="megaphone"></i> Daily Notification Bar</h2>
+                            <textarea id="marquee-input" class="w-full border p-2 rounded h-24 mb-2">${state.marqueeText}</textarea>
+                            <button onclick="updateMarquee()" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Update Marquee Display</button>
+                        </div>
+
+                    </div>
+                </div>
+            `;
+
+            // Event Listeners for Admin UI
+            document.getElementById('add-user-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const u = document.getElementById('new-username').value;
+                const p = document.getElementById('new-password').value;
+                if(state.users.find(usr => usr.username === u)) {
+                    showToast('Username already exists', 'error');
+                    return;
+                }
+                state.users.push({ id: generateId(), username: u, password: p, balance: 0 });
+                showToast('User created successfully', 'success');
+                render();
+            });
+        }
+
+        /* --- USER DASHBOARD --- */
+        function renderUserDashboard() {
+            const user = state.users.find(u => u.id === state.currentUser);
+            if (!user) return logout();
+
+            let userTransactionsHtml = state.transactions
+                .filter(t => t.user === user.username)
+                .map(t => `
+                    <tr class="border-t">
+                        <td class="px-4 py-2 text-xs text-gray-500">${t.date}</td>
+                        <td class="px-4 py-2"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${t.type === 'Credit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${t.type}</span></td>
+                        <td class="px-4 py-2 font-bold ${t.type === 'Credit' ? 'text-green-600' : 'text-red-600'}">₹${t.amount}</td>
+                        <td class="px-4 py-2 text-sm">${t.desc}</td>
+                    </tr>
+                `).join('');
+
+            if(userTransactionsHtml === '') userTransactionsHtml = '<tr><td colspan="4" class="p-4 text-center text-gray-500">No transactions yet.</td></tr>';
+
+            app.innerHTML = `
+                <!-- Marquee Notification -->
+                <div class="bg-yellow-400 text-yellow-900 py-2 marquee-container font-semibold shadow">
+                    <div class="marquee-content w-full">${state.marqueeText}</div>
+                </div>
+
+                <!-- Navbar -->
+                <nav class="bg-blue-800 text-white p-4 shadow-md flex justify-between items-center">
+                    <h1 class="text-xl font-bold flex items-center gap-2"><i data-lucide="user"></i> Subagent: ${user.username}</h1>
+                    <button onclick="logout()" class="flex items-center gap-1 hover:text-blue-200"><i data-lucide="log-out" class="w-4 h-4"></i> Logout</button>
+                </nav>
+
+                <div class="max-w-5xl mx-auto p-4 grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                    
+                    <!-- Wallet Info -->
+                    <div class="md:col-span-1 space-y-6">
+                        <div class="bg-white p-6 rounded-lg shadow-lg border-t-4 border-green-500 text-center">
+                            <h2 class="text-gray-500 font-bold mb-2 uppercase text-sm">Your Wallet Balance</h2>
+                            <div class="text-5xl font-black text-green-600 mb-6">₹${user.balance}</div>
+                            
+                            <hr class="mb-4">
+                            
+                            <h3 class="font-bold text-gray-700 mb-2">Request Funds</h3>
+                            <div class="flex flex-col gap-2">
+                                <input type="number" id="request-amount" placeholder="Amount needed" class="border p-2 rounded w-full">
+                                <button onclick="requestFunds('${user.username}')" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full flex justify-center items-center gap-2"><i data-lucide="send" class="w-4 h-4"></i> Send Request</button>
+                            </div>
+                        </div>
+
+                        <!-- Admin Contact -->
+                        <div class="bg-gray-800 text-white p-6 rounded-lg shadow-lg">
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2 border-b border-gray-600 pb-2"><i data-lucide="phone"></i> Admin Contact</h2>
+                            <p class="text-sm mb-2 text-gray-300">For urgent queries or manual top-ups, please contact the administrator.</p>
+                            <ul class="space-y-2 text-sm mt-4">
+                                <li class="flex items-center gap-2"><i data-lucide="mail" class="w-4 h-4 text-blue-400"></i> admin@pratheekenterprises.tech</li>
+                                <li class="flex items-center gap-2"><i data-lucide="phone-call" class="w-4 h-4 text-green-400"></i> +91 98765 43210</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Transaction History -->
+                    <div class="md:col-span-2">
+                        <div class="bg-white p-6 rounded-lg shadow-lg h-full">
+                            <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800"><i data-lucide="list"></i> Wallet History</h2>
+                            <div class="overflow-x-auto border rounded">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="bg-gray-100">
+                                        <tr>
+                                            <th class="px-4 py-3 text-gray-600 font-semibold text-sm">Date & Time</th>
+                                            <th class="px-4 py-3 text-gray-600 font-semibold text-sm">Type</th>
+                                            <th class="px-4 py-3 text-gray-600 font-semibold text-sm">Amount</th>
+                                            <th class="px-4 py-3 text-gray-600 font-semibold text-sm">Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>${userTransactionsHtml}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            `;
+        }
+
+        /* ==========================================
+           ACTION HANDLERS (Simulating Database logic)
+           ========================================== */
+
+        window.logout = function() {
+            state.currentUser = null;
+            showToast('Logged out successfully');
+            render();
+        }
+
+        /* --- Admin Actions --- */
+        window.updateAdminWallet = function(action) {
+            const amt = parseInt(document.getElementById('admin-wallet-amount').value);
+            if (!amt || amt <= 0) return showToast('Enter a valid amount', 'error');
+            
+            if (action === 'add') {
+                state.adminWallet += amt;
+                state.transactions.push({ id: generateId(), date: new Date().toLocaleString(), type: 'Credit', amount: amt, user: 'Admin', desc: 'Manual addition to Admin Wallet' });
+                showToast(`Added ₹${amt} to Admin Wallet`, 'success');
+            } else {
+                if(state.adminWallet < amt) return showToast('Insufficient admin funds', 'error');
+                state.adminWallet -= amt;
+                state.transactions.push({ id: generateId(), date: new Date().toLocaleString(), type: 'Debit', amount: amt, user: 'Admin', desc: 'Manual withdrawal from Admin Wallet' });
+                showToast(`Withdrew ₹${amt} from Admin Wallet`, 'success');
+            }
+            render();
+        }
+
+        window.handleCreditDebit = function(userId, type) {
+            const user = state.users.find(u => u.id === userId);
+            const rawAmt = prompt(`Enter amount to ${type} for ${user.username}:`);
+            const amt = parseInt(rawAmt);
+            
+            if (!amt || amt <= 0) return;
+
+            if (type === 'Credit') {
+                if (state.adminWallet < amt) return showToast('Not enough funds in Admin Wallet', 'error');
+                state.adminWallet -= amt;
+                user.balance += amt;
+                showToast(`Credited ₹${amt} to ${user.username}`, 'success');
+            } else if (type === 'Debit') {
+                if (user.balance < amt) return showToast('User does not have enough balance to debit', 'error');
+                state.adminWallet += amt;
+                user.balance -= amt;
+                showToast(`Debited ₹${amt} from ${user.username}`, 'success');
+            }
+
+            state.transactions.push({
+                id: generateId(),
+                date: new Date().toLocaleString(),
+                type: type,
+                amount: amt,
+                user: user.username,
+                desc: `Admin ${type} via Dashboard`
+            });
+            render();
+        }
+
+        window.handleDeleteUser = function(userId) {
+            const user = state.users.find(u => u.id === userId);
+            if (confirm(`Are you sure you want to delete ${user.username}? Any remaining balance (₹${user.balance}) will be returned to Admin.`)) {
+                state.adminWallet += user.balance; // Refund to admin
+                state.users = state.users.filter(u => u.id !== userId);
+                
+                state.transactions.push({
+                    id: generateId(),
+                    date: new Date().toLocaleString(),
+                    type: 'Credit',
+                    amount: user.balance,
+                    user: 'Admin',
+                    desc: `Refund from deleted user: ${user.username}`
+                });
+
+                showToast(`User deleted. ₹${user.balance} returned to Admin.`, 'info');
+                render();
+            }
+        }
+
+        window.handleDeleteTransaction = function(txId) {
+            if(confirm("Delete this transaction? (This purely removes the history record, it does not refund money).")) {
+                state.transactions = state.transactions.filter(t => t.id !== txId);
+                showToast('History record deleted');
+                render();
+            }
+        }
+
+        window.updateMarquee = function() {
+            const text = document.getElementById('marquee-input').value;
+            state.marqueeText = text;
+            showToast('Notification updated successfully', 'success');
+            render();
+        }
+
+        window.dismissRequest = function(reqId) {
+            state.fundRequests = state.fundRequests.filter(r => r.id !== reqId);
+            render();
+        }
+
+        /* --- User Actions --- */
+        window.requestFunds = function(username) {
+            const amt = parseInt(document.getElementById('request-amount').value);
+            if (!amt || amt <= 0) return showToast('Enter a valid amount to request', 'error');
+            
+            state.fundRequests.push({
+                id: generateId(),
+                username: username,
+                amount: amt
+            });
+            
+            showToast('Fund request sent to Admin', 'success');
+            document.getElementById('request-amount').value = '';
+            render();
+        }
+
+        // Initial Render
+        render();
+
+    </script>
+</body>
+</html>
