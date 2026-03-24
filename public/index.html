@@ -5,30 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pratheek Enterprises - Subagent Portal</title>
     
-    <!-- Premium Font for Business Identity -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- Configure Tailwind to use the premium font -->
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-                    }
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] }
                 }
             }
         }
     </script>
     
     <style>
-        /* =======================================================
-           PREMIUM BUSINESS IDENTITY STYLES (GLASSMORPHISM)
-           ======================================================= */
-
         .animated-bg {
             background: linear-gradient(-45deg, #f0f4ff, #e0e7ff, #f8fafc, #dbeafe);
             background-size: 400% 400%;
@@ -126,7 +117,6 @@
             border: 1px solid rgba(255,255,255,0.2);
         }
         
-        /* Custom Radio Buttons for FRC */
         input[type="radio"]:checked + div {
             border-color: #3b82f6;
             background-color: #eff6ff;
@@ -153,47 +143,40 @@
         let adminData = { adminWallet: 0, marqueeText: 'Loading...', transactions: [] };
         let usersData = [];
         let fundRequests = [];
-        let rechargeRequests = []; // NEW: Stores live recharges
+        let rechargeRequests = [];
+        let currentRechargeMode = 'frc'; // 'frc' or 'normal'
 
-        function setLoading(isLoading) {
-            document.getElementById('loading-overlay').style.display = isLoading ? 'flex' : 'none';
-        }
+        const FRC_PLANS = [
+            { price: 140, otf: 21, desc: "UL Calls + 2GB, 28 Days (Only for HMD)" },
+            { price: 199, otf: 30, desc: "UL Calls + 2GB, 28 Days" },
+            { price: 299, otf: 89, desc: "UL Calls + 1.5GB/D, 28 Days" },
+            { price: 365, otf: 135, desc: "UL DATA + UL Calls, 28 Days" },
+            { price: 579, otf: 116, desc: "UL Calls + 1.5GB/D, 56 Days" },
+            { price: 649, otf: 162, desc: "UL DATA + UL Calls, 56 Days" },
+            { price: 859, otf: 116, desc: "UL Calls + 1.5GB/D, 84 Days" },
+            { price: 979, otf: 162, desc: "UL DATA + UL Calls + 3M ViMTV, 84 Days" },
+            { price: 3499, otf: 116, desc: "UL Calls + 1.5GB/D, 365 Days" },
+            { price: 3599, otf: 162, desc: "UL Calls + 2GB/D, 365 Days" }
+        ];
 
-        function formatCurrency(amount) {
-            return Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
+        function setLoading(isLoading) { document.getElementById('loading-overlay').style.display = isLoading ? 'flex' : 'none'; }
+        function formatCurrency(amount) { return Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            
             const bg = type === 'error' ? 'bg-red-600/90' : type === 'success' ? 'bg-green-600/90' : 'bg-blue-600/90';
-            
             toast.className = `toast ${bg} text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 font-semibold transform translate-x-full opacity-0`;
             toast.innerHTML = `<i data-lucide="${type === 'error' ? 'alert-circle' : 'check-circle'}" class="w-5 h-5"></i> <span>${message}</span>`;
-            
             container.appendChild(toast);
             lucide.createIcons();
-
-            setTimeout(() => {
-                toast.classList.remove('translate-x-full', 'opacity-0');
-                toast.classList.add('translate-x-0', 'opacity-100');
-            }, 10);
-
-            setTimeout(() => {
-                toast.classList.remove('translate-x-0', 'opacity-100');
-                toast.classList.add('translate-x-full', 'opacity-0');
-                setTimeout(() => toast.remove(), 400);
-            }, 4000);
+            setTimeout(() => { toast.classList.remove('translate-x-full', 'opacity-0'); toast.classList.add('translate-x-0', 'opacity-100'); }, 10);
+            setTimeout(() => { toast.classList.remove('translate-x-0', 'opacity-100'); toast.classList.add('translate-x-full', 'opacity-0'); setTimeout(() => toast.remove(), 400); }, 4000);
         }
 
         async function apiCall(endpoint, method = 'GET', body = null) {
-            const options = { 
-                method, 
-                headers: { 'Content-Type': 'application/json' } 
-            };
+            const options = { method, headers: { 'Content-Type': 'application/json' } };
             if (body) options.body = JSON.stringify(body);
-            
             setLoading(true);
             try {
                 const res = await fetch(endpoint, options);
@@ -201,65 +184,41 @@
                 if (!res.ok) throw new Error(data.error || 'Server error occurred');
                 return data;
             } catch (err) {
-                showToast(err.message, 'error');
-                throw err;
-            } finally {
-                setLoading(false);
-            }
+                showToast(err.message, 'error'); throw err;
+            } finally { setLoading(false); }
         }
 
         async function loadData() {
             if (!currentUser) return;
             try {
-                const [adminRes, usersRes] = await Promise.all([
-                    apiCall('/api/admin'),
-                    apiCall('/api/users')
+                const [adminRes, usersRes, reqRes, rechargeRes] = await Promise.all([
+                    apiCall('/api/admin'), apiCall('/api/users'), apiCall('/api/requests'), apiCall('/api/recharge')
                 ]);
-                
                 adminData = adminRes;
                 usersData = usersRes.users;
-
-                if (currentUser.role === 'admin') {
-                    const reqRes = await apiCall('/api/requests');
-                    fundRequests = reqRes.requests;
-
-                    // Fetch live recharge requests
-                    const rechargeRes = await apiCall('/api/recharge');
-                    rechargeRequests = rechargeRes.requests;
-                }
+                fundRequests = reqRes.requests;
+                rechargeRequests = rechargeRes.requests;
                 
                 if (currentUser.role === 'user') {
                     const freshUser = usersData.find(u => u.id === currentUser.id);
                     if (freshUser) {
                         currentUser.balance = freshUser.balance;
                         localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    } else {
-                        // User was deleted by admin
-                        logout();
-                        return;
-                    }
+                    } else { logout(); return; }
                 }
-                
                 render();
-            } catch (error) {
-                console.error("Failed to load data:", error);
-            }
+            } catch (error) { console.error("Failed to load data:", error); }
         }
 
         /* ==========================================
            RENDERING LOGIC
            ========================================== */
-        
         const app = document.getElementById('app');
 
         function render() {
-            if (!currentUser) {
-                renderLogin();
-            } else if (currentUser.role === 'admin') {
-                renderAdminDashboard();
-            } else {
-                renderUserDashboard();
-            }
+            if (!currentUser) renderLogin();
+            else if (currentUser.role === 'admin') renderAdminDashboard();
+            else renderUserDashboard();
             lucide.createIcons();
         }
 
@@ -276,35 +235,19 @@
                             <p class="text-gray-500 font-medium mt-2">Secure Subagent Portal</p>
                         </div>
                         <form id="login-form" class="space-y-5">
-                            <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-1">Username</label>
-                                <input type="text" id="username" class="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none" required placeholder="Enter your username">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-1">Password</label>
-                                <input type="password" id="password" class="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none" required placeholder="••••••••">
-                            </div>
-                            <button type="submit" class="w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30 transition-all mt-4">
-                                Secure Login
-                            </button>
+                            <div><label class="block text-sm font-bold text-gray-700 mb-1">Username</label><input type="text" id="username" class="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none" required placeholder="Enter your username"></div>
+                            <div><label class="block text-sm font-bold text-gray-700 mb-1">Password</label><input type="password" id="password" class="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none" required placeholder="••••••••"></div>
+                            <button type="submit" class="w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30 transition-all mt-4">Secure Login</button>
                         </form>
                     </div>
                 </div>
             `;
-
             document.getElementById('login-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('password').value;
-
+                const username = document.getElementById('username').value, password = document.getElementById('password').value;
                 try {
                     const data = await apiCall('/api/login', 'POST', { username, password });
-                    if (data.success) {
-                        currentUser = data.user;
-                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                        showToast(`Welcome back, ${currentUser.username}`, 'success');
-                        await loadData();
-                    }
+                    if (data.success) { currentUser = data.user; localStorage.setItem('currentUser', JSON.stringify(currentUser)); showToast(`Welcome back, ${currentUser.username}`, 'success'); await loadData(); }
                 } catch (e) { }
             });
         }
@@ -321,8 +264,7 @@
                         <button onclick="handleDeleteUser(${u.id}, '${u.username}')" class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-300 shadow-sm transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </td>
                 </tr>
-            `).join('');
-            if(usersHtml === '') usersHtml = '<tr><td colspan="3" class="p-6 text-center text-gray-500 font-medium">No subagents active. Add one below.</td></tr>';
+            `).join('') || '<tr><td colspan="3" class="p-6 text-center text-gray-500 font-medium">No subagents active. Add one below.</td></tr>';
 
             let transactionsHtml = adminData.transactions.map(t => {
                 const date = new Date(t.created_at).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
@@ -334,8 +276,7 @@
                     <td class="px-5 py-3 font-black ${t.type === 'Credit' ? 'text-green-600' : 'text-red-600'}">₹${formatCurrency(t.amount)}</td>
                     <td class="px-5 py-3 text-sm text-gray-600 font-medium">${t.description}</td>
                 </tr>
-            `}).join('');
-            if(transactionsHtml === '') transactionsHtml = '<tr><td colspan="5" class="p-6 text-center text-gray-500 font-medium">No transactions recorded yet.</td></tr>';
+            `}).join('') || '<tr><td colspan="5" class="p-6 text-center text-gray-500 font-medium">No transactions recorded yet.</td></tr>';
 
             let requestsHtml = fundRequests.map(r => `
                 <div class="bg-white/60 p-4 rounded-xl border border-yellow-200/50 mb-3 shadow-sm backdrop-blur-md">
@@ -349,7 +290,6 @@
                 </div>
             `).join('') || '<p class="text-gray-500 text-sm text-center py-4 bg-black/5 rounded-xl border border-dashed border-gray-300 font-medium">No pending fund requests.</p>';
 
-            // Live Recharge Requests
             let rechargeHtml = rechargeRequests.map(r => `
                 <div class="bg-white/60 p-4 rounded-xl border border-blue-200/50 mb-3 shadow-sm backdrop-blur-md">
                     <div class="text-sm mb-3 text-gray-700">
@@ -373,9 +313,7 @@
                 </nav>
 
                 <div class="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-                    <!-- Left Column -->
                     <div class="lg:col-span-2 space-y-6">
-                        <!-- Admin Wallet Card -->
                         <div class="glass-card p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.1s;">
                             <h2 class="text-sm font-bold mb-2 flex items-center gap-2 text-gray-500 uppercase tracking-widest"><i data-lucide="wallet" class="text-blue-500 w-4 h-4"></i> Master Treasury</h2>
                             <div class="text-5xl font-black text-gray-900 mb-6 tracking-tight">₹${formatCurrency(adminData.adminWallet)}</div>
@@ -386,7 +324,6 @@
                             </div>
                         </div>
 
-                        <!-- User Management -->
                         <div class="glass-card p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.2s;">
                             <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800"><i data-lucide="users" class="text-blue-500"></i> Manage Subagents</h2>
                             <form id="add-user-form" class="flex gap-3 mb-6 bg-black/5 p-2 rounded-2xl border border-white/50">
@@ -396,19 +333,12 @@
                             </form>
                             <div class="overflow-hidden border border-gray-100 rounded-2xl bg-white/50">
                                 <table class="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr class="bg-black/5 text-gray-500 text-xs uppercase tracking-wider">
-                                            <th class="px-5 py-4 font-bold">Agent Name</th>
-                                            <th class="px-5 py-4 font-bold">Ledger Balance</th>
-                                            <th class="px-5 py-4 font-bold">Controls</th>
-                                        </tr>
-                                    </thead>
+                                    <thead><tr class="bg-black/5 text-gray-500 text-xs uppercase tracking-wider"><th class="px-5 py-4 font-bold">Agent Name</th><th class="px-5 py-4 font-bold">Ledger Balance</th><th class="px-5 py-4 font-bold">Controls</th></tr></thead>
                                     <tbody>${usersHtml}</tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <!-- Transaction History -->
                         <div class="glass-card p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.3s;">
                             <div class="flex justify-between items-center mb-6">
                                 <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><i data-lucide="history" class="text-blue-500"></i> Ledger History</h2>
@@ -416,89 +346,81 @@
                             </div>
                             <div class="overflow-x-auto h-96 overflow-y-auto border border-gray-100 rounded-2xl bg-white/50 relative">
                                 <table class="w-full text-left border-collapse text-sm">
-                                    <thead class="sticky top-0 bg-gray-50 shadow-sm z-10">
-                                        <tr class="text-gray-500 text-xs uppercase tracking-wider">
-                                            <th class="px-5 py-4 font-bold">Timestamp</th>
-                                            <th class="px-5 py-4 font-bold">Entity</th>
-                                            <th class="px-5 py-4 font-bold">Flow</th>
-                                            <th class="px-5 py-4 font-bold">Amount</th>
-                                            <th class="px-5 py-4 font-bold">Notes</th>
-                                        </tr>
-                                    </thead>
+                                    <thead class="sticky top-0 bg-gray-50 shadow-sm z-10"><tr class="text-gray-500 text-xs uppercase tracking-wider"><th class="px-5 py-4 font-bold">Timestamp</th><th class="px-5 py-4 font-bold">Entity</th><th class="px-5 py-4 font-bold">Flow</th><th class="px-5 py-4 font-bold">Amount</th><th class="px-5 py-4 font-bold">Notes</th></tr></thead>
                                     <tbody>${transactionsHtml}</tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Right Column -->
                     <div class="space-y-6">
-
-                        <!-- Recharge Requests -->
                         <div class="glass-card p-8 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.15s;">
                             <div class="absolute top-0 left-0 w-32 h-32 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
-                            <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800 relative z-10"><i data-lucide="smartphone" class="text-blue-500"></i> Live Recharges</h2>
-                            <div class="max-h-80 overflow-y-auto pr-2 relative z-10">
-                                ${rechargeHtml}
-                            </div>
+                            <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800 relative z-10"><i data-lucide="smartphone" class="text-blue-500"></i> Pending Recharges</h2>
+                            <div class="max-h-80 overflow-y-auto pr-2 relative z-10">${rechargeHtml}</div>
                         </div>
 
-                        <!-- Fund Requests -->
                         <div class="glass-card p-8 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.20s;">
                             <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
-                            <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800 relative z-10"><i data-lucide="bell-ring" class="text-yellow-500"></i> Wallet Requests</h2>
-                            <div class="max-h-80 overflow-y-auto pr-2 relative z-10">
-                                ${requestsHtml}
-                            </div>
+                            <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800 relative z-10"><i data-lucide="bell-ring" class="text-yellow-500"></i> Pending Fund Req.</h2>
+                            <div class="max-h-80 overflow-y-auto pr-2 relative z-10">${requestsHtml}</div>
                         </div>
 
-                        <!-- Notification Settings -->
                         <div class="glass-card p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.25s;">
                             <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800"><i data-lucide="broadcast" class="text-blue-500"></i> Global Announcement</h2>
                             <textarea id="marquee-input" class="w-full border-none bg-white p-4 rounded-2xl h-32 mb-4 outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium shadow-inner resize-none">${adminData.marqueeText}</textarea>
                             <button onclick="updateMarquee()" class="w-full bg-gray-900 text-white px-4 py-3 rounded-xl font-bold hover:bg-black shadow-lg transition-all">Broadcast Message</button>
                         </div>
-
                     </div>
                 </div>
             `;
-
             document.getElementById('add-user-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const username = document.getElementById('new-username').value;
-                const password = document.getElementById('new-password').value;
                 try {
-                    await apiCall('/api/users', 'POST', { username, password });
-                    showToast('Subagent credential created', 'success');
-                    await loadData();
+                    await apiCall('/api/users', 'POST', { username: document.getElementById('new-username').value, password: document.getElementById('new-password').value });
+                    showToast('Subagent credential created', 'success'); await loadData();
                 } catch (err) {}
             });
         }
 
         /* --- USER DASHBOARD --- */
         function renderUserDashboard() {
+            // My Ledger
             const userTx = adminData.transactions.filter(t => t.user === currentUser.username);
-            
             let userTransactionsHtml = userTx.map(t => {
                 const date = new Date(t.created_at).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
                 const isIncoming = t.type === 'Credit';
-                
-                return `
-                <tr class="border-b border-gray-100 hover:bg-black/5 transition-colors">
-                    <td class="px-5 py-4 text-xs text-gray-500 font-semibold">${date}</td>
-                    <td class="px-5 py-4">
-                        <span class="px-3 py-1 inline-flex text-xs font-bold rounded-full ${isIncoming ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                            ${isIncoming ? 'Inbound' : 'Outbound'}
-                        </span>
-                    </td>
-                    <td class="px-5 py-4 font-black ${isIncoming ? 'text-green-600' : 'text-red-600'}">
-                        ${isIncoming ? '+' : '-'}₹${formatCurrency(t.amount)}
-                    </td>
-                    <td class="px-5 py-4 text-sm text-gray-600 font-medium">${t.description}</td>
-                </tr>
-            `}).join('');
+                return `<tr class="border-b border-gray-100 hover:bg-black/5 transition-colors"><td class="px-5 py-4 text-xs text-gray-500 font-semibold">${date}</td><td class="px-5 py-4"><span class="px-3 py-1 inline-flex text-xs font-bold rounded-full ${isIncoming ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${isIncoming ? 'Inbound' : 'Outbound'}</span></td><td class="px-5 py-4 font-black ${isIncoming ? 'text-green-600' : 'text-red-600'}">${isIncoming ? '+' : '-'}₹${formatCurrency(t.amount)}</td><td class="px-5 py-4 text-sm text-gray-600 font-medium">${t.description}</td></tr>`;
+            }).join('') || '<tr><td colspan="4" class="p-8 text-center text-gray-500 font-medium">Your ledger is currently empty.</td></tr>';
 
-            if(userTransactionsHtml === '') userTransactionsHtml = '<tr><td colspan="4" class="p-8 text-center text-gray-500 font-medium">Your ledger is currently empty.</td></tr>';
+            // FRC Plans Html 
+            let frcPlansHtml = FRC_PLANS.map((plan, index) => `
+                <label class="block relative p-3 border border-gray-200 bg-white rounded-xl cursor-pointer hover:border-blue-400 transition-all shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <input type="radio" name="recharge-plan" value="${plan.price}|${plan.otf}|${plan.desc}" class="w-4 h-4 text-blue-600" ${index===0?'required':''}>
+                        <div class="flex-1 flex justify-between items-center">
+                            <div class="font-bold text-sm text-gray-900 flex flex-col">
+                                <span class="text-base text-blue-900 tracking-tight">₹${plan.price}</span>
+                                <span class="text-xs text-gray-600 mt-1">${plan.desc}</span>
+                            </div>
+                            <div class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded font-bold border border-green-100">OTF: ₹${plan.otf}</div>
+                        </div>
+                    </div>
+                </label>
+            `).join('');
+
+            // My Pending Requests HTML
+            let myFundReqs = fundRequests.filter(r => r.user_id === currentUser.id);
+            let myRechargeReqs = rechargeRequests.filter(r => r.user_id === currentUser.id);
+            let myPendingHtml = '';
+            
+            myFundReqs.forEach(r => {
+                myPendingHtml += `<div class="bg-yellow-50/80 p-3 rounded-xl border border-yellow-200/50 mb-2 shadow-sm"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-600 flex items-center gap-1"><i data-lucide="hand-coins" class="w-3 h-3"></i> Wallet Request</span><span class="text-[10px] font-black text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded uppercase tracking-wider">Pending Admin</span></div><div class="font-black text-gray-800 mt-1">₹${formatCurrency(r.amount)}</div></div>`;
+            });
+            myRechargeReqs.forEach(r => {
+                myPendingHtml += `<div class="bg-blue-50/80 p-3 rounded-xl border border-blue-200/50 mb-2 shadow-sm"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-600 flex items-center gap-1"><i data-lucide="smartphone" class="w-3 h-3"></i> Recharge: ${r.phone}</span><span class="text-[10px] font-black text-blue-600 bg-blue-100 px-2 py-0.5 rounded uppercase tracking-wider">Pending OTF</span></div><div class="text-xs text-gray-700 font-bold truncate mt-1">${r.plan_desc}</div><div class="font-black text-gray-800 mt-1">₹${formatCurrency(r.plan_price)}</div></div>`;
+            });
+            if (myPendingHtml === '') myPendingHtml = '<p class="text-gray-500 text-sm text-center py-5 bg-white/50 rounded-xl border border-dashed border-gray-300 font-medium">No active pending requests.</p>';
 
             app.innerHTML = `
                 <div class="marquee-container text-yellow-900 py-2.5 font-bold shadow-md border-b border-yellow-500/30 text-sm tracking-wide">
@@ -507,86 +429,67 @@
 
                 <nav class="glass-nav text-white p-4 shadow-lg sticky top-0 z-40">
                     <div class="max-w-6xl mx-auto flex justify-between items-center">
-                        <h1 class="text-xl font-extrabold flex items-center gap-3 tracking-wide">
-                            <div class="bg-white/20 p-1.5 rounded-lg"><i data-lucide="user-circle" class="w-5 h-5"></i></div> 
-                            ${currentUser.username}
-                        </h1>
+                        <h1 class="text-xl font-extrabold flex items-center gap-3 tracking-wide"><div class="bg-white/20 p-1.5 rounded-lg"><i data-lucide="user-circle" class="w-5 h-5"></i></div> ${currentUser.username}</h1>
                         <button onclick="logout()" class="flex items-center gap-2 hover:bg-white/10 px-4 py-2 rounded-xl transition-all font-semibold text-sm"><i data-lucide="log-out" class="w-4 h-4"></i> Sign Out</button>
                     </div>
                 </nav>
 
-                <div class="max-w-6xl mx-auto p-4 grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
-                    
-                    <!-- Wallet Info Column -->
+                <div class="max-w-6xl mx-auto p-4 grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
+                    <!-- Wallet & Recharge Column -->
                     <div class="md:col-span-1 space-y-6">
                         
                         <!-- Balance Card -->
-                        <div class="glass-card p-8 rounded-3xl text-center relative overflow-hidden animate-fade-in" style="animation-delay: 0.1s;">
+                        <div class="glass-card p-6 rounded-3xl text-center relative overflow-hidden animate-fade-in" style="animation-delay: 0.1s;">
                             <div class="absolute -top-10 -right-10 w-40 h-40 bg-green-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
-                            
                             <h2 class="text-gray-500 font-bold mb-3 uppercase text-xs tracking-widest relative z-10">Available Balance</h2>
-                            <div class="text-5xl font-black text-gray-900 mb-8 drop-shadow-sm relative z-10 tracking-tight">₹${formatCurrency(currentUser.balance)}</div>
+                            <div class="text-5xl font-black text-gray-900 mb-6 drop-shadow-sm relative z-10 tracking-tight">₹${formatCurrency(currentUser.balance)}</div>
                             
-                            <div class="bg-white/80 p-5 rounded-2xl border border-white relative z-10 shadow-sm">
-                                <h3 class="font-extrabold text-gray-800 mb-4 text-sm text-left flex items-center gap-2"><i data-lucide="hand-coins" class="w-4 h-4 text-blue-600"></i> Requisition Funds</h3>
-                                <div class="flex flex-col gap-3">
-                                    <input type="number" step="0.01" id="request-amount" placeholder="Amount Required (₹)" class="border-none bg-black/5 p-3 rounded-xl w-full outline-none focus:ring-2 focus:ring-blue-500 font-bold">
-                                    <button onclick="requestFunds()" class="bg-blue-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-blue-700 w-full flex justify-center items-center gap-2 transition-all shadow-lg shadow-blue-600/30">
-                                        Submit Request <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                                    </button>
+                            <div class="bg-white/80 p-4 rounded-2xl border border-white relative z-10 shadow-sm">
+                                <h3 class="font-extrabold text-gray-800 mb-3 text-sm text-left flex items-center gap-2"><i data-lucide="hand-coins" class="w-4 h-4 text-blue-600"></i> Request Funds</h3>
+                                <div class="flex gap-2">
+                                    <input type="number" step="0.01" id="request-amount" placeholder="Amount (₹)" class="border-none bg-black/5 p-3 rounded-xl w-full outline-none focus:ring-2 focus:ring-blue-500 font-bold">
+                                    <button onclick="requestFunds()" class="bg-blue-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-600/30"><i data-lucide="send" class="w-4 h-4"></i></button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- NEW: Mobile Recharge Module -->
+                        <!-- Mobile Recharge Module -->
                         <div class="glass-card p-6 rounded-3xl relative overflow-hidden animate-fade-in" style="animation-delay: 0.15s;">
-                            <h3 class="font-extrabold text-gray-800 mb-4 text-sm text-left flex items-center gap-2"><i data-lucide="smartphone" class="w-4 h-4 text-blue-600"></i> FRC Mobile Recharge</h3>
+                            <h3 class="font-extrabold text-gray-800 mb-4 text-sm text-left flex items-center gap-2"><i data-lucide="smartphone" class="w-4 h-4 text-blue-600"></i> Mobile Recharge</h3>
                             
                             <!-- Step 1: Phone Entry -->
                             <div id="recharge-step-1">
                                 <input type="tel" id="recharge-phone" placeholder="Enter Mobile Number" class="border-none bg-white p-3 rounded-xl w-full outline-none focus:ring-2 focus:ring-blue-500 font-bold mb-3 border border-gray-100 shadow-inner">
-                                <button onclick="showRechargePlans()" class="bg-gray-900 text-white px-4 py-3 rounded-xl font-bold hover:bg-black w-full flex justify-center items-center gap-2 transition-all shadow-lg">Next <i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                                <button onclick="showRechargePlans()" class="bg-gray-900 text-white px-4 py-3 rounded-xl font-bold hover:bg-black w-full flex justify-center items-center gap-2 transition-all shadow-lg">Proceed <i data-lucide="chevron-right" class="w-4 h-4"></i></button>
                             </div>
 
                             <!-- Step 2: Plan Selection -->
                             <div id="recharge-step-2" class="hidden">
-                                <p class="text-xs font-bold text-gray-500 mb-3">Select FRC for <span id="display-phone" class="text-blue-600 tracking-wider"></span></p>
+                                <p class="text-xs font-bold text-gray-500 mb-3 text-center">Recharging <span id="display-phone" class="text-blue-600 tracking-wider font-black"></span></p>
                                 
-                                <div class="space-y-2 mb-4">
-                                    <label class="block relative p-3 border border-gray-200 bg-white rounded-xl cursor-pointer hover:border-blue-400 transition-all">
-                                        <div class="flex items-center gap-3">
-                                            <input type="radio" name="recharge-plan" value="365|135|365 UL DATA+Calls 28D" class="w-4 h-4 text-blue-600" required>
-                                            <div class="flex-1">
-                                                <div class="font-bold text-sm text-gray-900">₹365 UL DATA+Calls 28D</div>
-                                                <div class="text-xs text-green-600 font-bold mt-0.5">OTF: ₹135</div>
-                                            </div>
-                                        </div>
-                                    </label>
-                                    
-                                    <label class="block relative p-3 border border-gray-200 bg-white rounded-xl cursor-pointer hover:border-blue-400 transition-all">
-                                        <div class="flex items-center gap-3">
-                                            <input type="radio" name="recharge-plan" value="299|89|299 UL calls+1.5GB/D 28D" class="w-4 h-4 text-blue-600">
-                                            <div class="flex-1">
-                                                <div class="font-bold text-sm text-gray-900">₹299 UL calls+1.5GB/D 28D</div>
-                                                <div class="text-xs text-green-600 font-bold mt-0.5">OTF: ₹89</div>
-                                            </div>
-                                        </div>
-                                    </label>
-
-                                    <label class="block relative p-3 border border-gray-200 bg-white rounded-xl cursor-pointer hover:border-blue-400 transition-all">
-                                        <div class="flex items-center gap-3">
-                                            <input type="radio" name="recharge-plan" value="199|30|199 UL Calls+2GB 28D" class="w-4 h-4 text-blue-600">
-                                            <div class="flex-1">
-                                                <div class="font-bold text-sm text-gray-900">₹199 UL Calls+2GB 28D</div>
-                                                <div class="text-xs text-green-600 font-bold mt-0.5">OTF: ₹30</div>
-                                            </div>
-                                        </div>
-                                    </label>
+                                <!-- FRC / Normal Toggle Tabs -->
+                                <div class="flex gap-1 mb-4 p-1 bg-gray-200/50 rounded-xl">
+                                    <button id="tab-frc" onclick="setRechargeMode('frc')" class="flex-1 py-2 rounded-lg bg-white shadow-sm font-bold text-blue-600 text-xs transition-all">FRC Plans</button>
+                                    <button id="tab-normal" onclick="setRechargeMode('normal')" class="flex-1 py-2 rounded-lg text-gray-500 font-bold hover:bg-white/50 text-xs transition-all">Normal (3% OTF)</button>
                                 </div>
 
-                                <div class="flex gap-2">
+                                <!-- FRC Plans List -->
+                                <div id="frc-section" class="space-y-2 mb-4 max-h-[220px] overflow-y-auto pr-1">
+                                    ${frcPlansHtml}
+                                </div>
+
+                                <!-- Normal Recharge Input -->
+                                <div id="normal-section" class="hidden mb-4">
+                                    <input type="number" step="0.01" id="normal-amount" oninput="document.getElementById('normal-otf-display').innerText = formatCurrency(this.value * 0.03)" placeholder="Enter Recharge Amount (₹)" class="border-none bg-white p-4 rounded-xl w-full outline-none focus:ring-2 focus:ring-blue-500 font-black text-center text-xl shadow-inner border border-gray-100 mb-3">
+                                    <div class="bg-blue-50/50 text-blue-800 p-3 rounded-xl text-xs font-bold border border-blue-100 flex justify-between items-center shadow-sm">
+                                        <span>Estimated OTF (3%):</span>
+                                        <span class="text-green-600 font-black text-sm">₹<span id="normal-otf-display">0.00</span></span>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-2 pt-2 border-t border-gray-100/50">
                                     <button onclick="cancelRecharge()" class="bg-gray-200 text-gray-700 px-4 py-3 rounded-xl font-bold hover:bg-gray-300 transition-all flex-[1]">Back</button>
-                                    <button onclick="submitRecharge()" class="bg-green-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-600/30 flex-[2]">Recharge</button>
+                                    <button onclick="submitRecharge()" class="bg-green-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-600/30 flex-[2]">Confirm Pay</button>
                                 </div>
                             </div>
                         </div>
@@ -603,23 +506,26 @@
                         </div>
                     </div>
 
-                    <!-- Transaction History Column -->
-                    <div class="md:col-span-2">
-                        <div class="glass-card p-8 rounded-3xl h-full animate-fade-in" style="animation-delay: 0.3s;">
+                    <!-- History & Pending Column -->
+                    <div class="md:col-span-2 space-y-6">
+                        
+                        <!-- My Pending Status Tracking -->
+                        <div class="glass-card p-6 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.2s;">
+                            <h2 class="text-lg font-bold flex items-center gap-2 text-gray-800 mb-4 border-b border-gray-100 pb-3"><i data-lucide="clock" class="text-blue-500 w-5 h-5"></i> My Pending Requests</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-1">
+                                ${myPendingHtml}
+                            </div>
+                        </div>
+
+                        <!-- Statement of Account -->
+                        <div class="glass-card p-8 rounded-3xl h-[500px] animate-fade-in flex flex-col" style="animation-delay: 0.3s;">
                             <div class="flex justify-between items-center mb-6">
                                 <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><i data-lucide="book-open" class="text-blue-600"></i> Statement of Account</h2>
                                 <button onclick="loadData()" class="text-blue-600 hover:bg-blue-50 font-bold flex items-center gap-2 text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-blue-100 transition-all"><i data-lucide="refresh-cw" class="w-4 h-4"></i> Sync</button>
                             </div>
-                            <div class="overflow-x-auto border border-gray-100 rounded-2xl h-[600px] overflow-y-auto bg-white/50 relative">
+                            <div class="overflow-x-auto border border-gray-100 rounded-2xl flex-1 bg-white/50 relative">
                                 <table class="w-full text-left border-collapse">
-                                    <thead class="bg-gray-50 sticky top-0 shadow-sm z-10">
-                                        <tr class="text-gray-500 text-xs uppercase tracking-wider">
-                                            <th class="px-5 py-4 font-bold">Timestamp</th>
-                                            <th class="px-5 py-4 font-bold">Direction</th>
-                                            <th class="px-5 py-4 font-bold">Amount</th>
-                                            <th class="px-5 py-4 font-bold">Reference</th>
-                                        </tr>
-                                    </thead>
+                                    <thead class="bg-gray-50 sticky top-0 shadow-sm z-10"><tr class="text-gray-500 text-xs uppercase tracking-wider"><th class="px-5 py-4 font-bold">Timestamp</th><th class="px-5 py-4 font-bold">Direction</th><th class="px-5 py-4 font-bold">Amount</th><th class="px-5 py-4 font-bold">Reference</th></tr></thead>
                                     <tbody>${userTransactionsHtml}</tbody>
                                 </table>
                             </div>
@@ -628,29 +534,21 @@
 
                 </div>
             `;
+            
+            // Re-apply current tab state after render
+            setRechargeMode(currentRechargeMode);
         }
 
         /* ==========================================
            ACTION HANDLERS
            ========================================== */
 
-        window.logout = function() {
-            localStorage.removeItem('currentUser');
-            currentUser = null;
-            showToast('Securely logged out');
-            render();
-        }
+        window.logout = function() { localStorage.removeItem('currentUser'); currentUser = null; showToast('Securely logged out'); render(); }
 
-        /* --- Admin Actions --- */
         window.updateAdminWallet = async function(action) {
             const amt = document.getElementById('admin-wallet-amount').value;
             if (!amt || parseFloat(amt) <= 0) return showToast('Enter a valid amount', 'error');
-            try {
-                await apiCall('/api/admin', 'PUT', { amount: amt, action });
-                showToast(`Treasury updated successfully`, 'success');
-                document.getElementById('admin-wallet-amount').value = '';
-                await loadData();
-            } catch (err) {}
+            try { await apiCall('/api/admin', 'PUT', { amount: amt, action }); showToast(`Treasury updated`, 'success'); document.getElementById('admin-wallet-amount').value = ''; await loadData(); } catch (err) {}
         }
 
         window.handleCreditDebit = async function(userId, username, type) {
@@ -658,65 +556,38 @@
             if (rawAmt === null) return; 
             const amt = parseFloat(rawAmt);
             if (isNaN(amt) || amt <= 0) return showToast('Invalid amount', 'error');
-
-            try {
-                await apiCall('/api/wallet', 'POST', { userId, amount: amt, action: type, description: `Manual ${type.toLowerCase()} by Admin` });
-                showToast(`Successfully processed ₹${formatCurrency(amt)} for ${username}`, 'success');
-                await loadData();
-            } catch(err) {}
+            try { await apiCall('/api/wallet', 'POST', { userId, amount: amt, action: type, description: `Manual ${type.toLowerCase()} by Admin` }); showToast(`Success`, 'success'); await loadData(); } catch(err) {}
         }
 
         window.handleDeleteUser = async function(userId, username) {
             if (!confirm(`Revoke access for ${username}? Remaining balance will route to Treasury.`)) return;
-            try {
-                const res = await apiCall(`/api/users?id=${userId}`, 'DELETE');
-                showToast(`Access revoked. ₹${formatCurrency(res.refunded || 0)} secured.`, 'info');
-                await loadData();
-            } catch (err) {}
+            try { const res = await apiCall(`/api/users?id=${userId}`, 'DELETE'); showToast(`Access revoked.`, 'info'); await loadData(); } catch (err) {}
         }
 
         window.updateMarquee = async function() {
             const text = document.getElementById('marquee-input').value;
-            try {
-                await apiCall('/api/admin', 'POST', { marqueeText: text });
-                showToast('Global broadcast updated', 'success');
-                await loadData();
-            } catch(err) {}
+            try { await apiCall('/api/admin', 'POST', { marqueeText: text }); showToast('Broadcast updated', 'success'); await loadData(); } catch(err) {}
         }
 
         window.handleRequest = async function(requestId, userId, amount, action) {
-            try {
-                await apiCall('/api/requests', 'PUT', { requestId, userId, amount, action });
-                showToast(`Requisition ${action}d successfully`, 'success');
-                await loadData(); 
-            } catch (err) {}
+            try { await apiCall('/api/requests', 'PUT', { requestId, userId, amount, action }); showToast(`Fund Requisition ${action}d`, 'success'); await loadData(); } catch (err) {}
         }
 
         window.handleRechargeAdmin = async function(requestId, userId, planPrice, otfAmount, action) {
-            try {
-                await apiCall('/api/recharge', 'PUT', { requestId, userId, planPrice, otfAmount, action });
-                showToast(`Recharge ${action === 'approve' ? 'commission credited' : 'failed and refunded'}`, 'success');
-                await loadData(); 
-            } catch (err) {}
+            try { await apiCall('/api/recharge', 'PUT', { requestId, userId, planPrice, otfAmount, action }); showToast(`Recharge ${action === 'approve' ? 'commission credited' : 'failed and refunded'}`, 'success'); await loadData(); } catch (err) {}
         }
 
-        /* --- User Actions --- */
         window.requestFunds = async function() {
             const amtRaw = document.getElementById('request-amount').value;
             const amt = parseFloat(amtRaw);
             if (isNaN(amt) || amt <= 0) return showToast('Enter a valid amount', 'error');
-            try {
-                await apiCall('/api/requests', 'POST', { userId: currentUser.id, amount: amt });
-                showToast('Requisition transmitted to Admin', 'success');
-                document.getElementById('request-amount').value = '';
-            } catch (err) {}
+            try { await apiCall('/api/requests', 'POST', { userId: currentUser.id, amount: amt }); showToast('Fund requisition sent', 'success'); document.getElementById('request-amount').value = ''; await loadData(); } catch (err) {}
         }
 
-        // Recharge UI Logic
+        // FRC / Normal UI Handlers
         window.showRechargePlans = function() {
             const phone = document.getElementById('recharge-phone').value;
             if(!phone || phone.length < 10) return showToast('Enter a valid 10-digit mobile number', 'error');
-            
             document.getElementById('display-phone').innerText = phone;
             document.getElementById('recharge-step-1').classList.add('hidden');
             document.getElementById('recharge-step-2').classList.remove('hidden');
@@ -727,50 +598,68 @@
             document.getElementById('recharge-step-1').classList.remove('hidden');
         }
 
+        window.setRechargeMode = function(mode) {
+            currentRechargeMode = mode;
+            const tabFrc = document.getElementById('tab-frc');
+            const tabNormal = document.getElementById('tab-normal');
+            const secFrc = document.getElementById('frc-section');
+            const secNormal = document.getElementById('normal-section');
+            
+            if (!tabFrc || !tabNormal) return; // Guard if not rendered yet
+
+            if(mode === 'frc') {
+                tabFrc.classList.replace('text-gray-500', 'text-blue-600'); tabFrc.classList.replace('hover:bg-white/50', 'bg-white'); tabFrc.classList.add('shadow-sm');
+                tabNormal.classList.replace('text-blue-600', 'text-gray-500'); tabNormal.classList.replace('bg-white', 'hover:bg-white/50'); tabNormal.classList.remove('shadow-sm');
+                secFrc.classList.remove('hidden'); secNormal.classList.add('hidden');
+            } else {
+                tabNormal.classList.replace('text-gray-500', 'text-blue-600'); tabNormal.classList.replace('hover:bg-white/50', 'bg-white'); tabNormal.classList.add('shadow-sm');
+                tabFrc.classList.replace('text-blue-600', 'text-gray-500'); tabFrc.classList.replace('bg-white', 'hover:bg-white/50'); tabFrc.classList.remove('shadow-sm');
+                secNormal.classList.remove('hidden'); secFrc.classList.add('hidden');
+            }
+        }
+
         window.submitRecharge = async function() {
             const phone = document.getElementById('recharge-phone').value;
-            const selectedPlan = document.querySelector('input[name="recharge-plan"]:checked');
-            
-            if(!selectedPlan) return showToast('Please select a recharge plan', 'error');
+            let planPrice = 0, otfAmount = 0, planDesc = '';
 
-            const [planPrice, otfAmount, planDesc] = selectedPlan.value.split('|');
-
-            if(currentUser.balance < parseFloat(planPrice)) {
-                return showToast(`Insufficient balance. You need ₹${planPrice} for this plan.`, 'error');
+            if (currentRechargeMode === 'frc') {
+                const selectedPlan = document.querySelector('input[name="recharge-plan"]:checked');
+                if(!selectedPlan) return showToast('Please select an FRC plan', 'error');
+                const parts = selectedPlan.value.split('|');
+                planPrice = parseFloat(parts[0]); otfAmount = parseFloat(parts[1]); planDesc = `FRC: ${parts[2]}`;
+            } else {
+                const amtRaw = document.getElementById('normal-amount').value;
+                planPrice = parseFloat(amtRaw);
+                if (isNaN(planPrice) || planPrice <= 0) return showToast('Enter a valid amount for Normal Recharge', 'error');
+                otfAmount = parseFloat((planPrice * 0.03).toFixed(2));
+                planDesc = `Normal Recharge`;
             }
 
+            if(currentUser.balance < planPrice) return showToast(`Insufficient balance. You need ₹${planPrice}.`, 'error');
+
             try {
-                await apiCall('/api/recharge', 'POST', { 
-                    userId: currentUser.id, 
-                    phone, 
-                    planPrice: parseFloat(planPrice), 
-                    otfAmount: parseFloat(otfAmount), 
-                    planDesc 
-                });
-                
-                showToast(`Recharge initiated! ₹${planPrice} deducted.`, 'success');
+                await apiCall('/api/recharge', 'POST', { userId: currentUser.id, phone, planPrice, otfAmount, planDesc });
+                showToast(`Recharge requested! ₹${planPrice} deducted.`, 'success');
+                cancelRecharge();
+                document.getElementById('recharge-phone').value = '';
+                if(currentRechargeMode === 'normal') { document.getElementById('normal-amount').value = ''; document.getElementById('normal-otf-display').innerText = '0.00'; }
                 await loadData(); 
             } catch (err) {}
         }
 
-        // Initialize App
         async function init() {
             if (currentUser) { await loadData(); } else { render(); }
         }
         
-        // Background Polling
+        // Auto-refresh pending data every 10 seconds for both Admin and Users
         setInterval(() => {
-            if (currentUser && currentUser.role === 'admin') {
+            if (currentUser) {
                 fetch('/api/requests').then(res => res.json()).then(data => {
-                    if (JSON.stringify(data.requests) !== JSON.stringify(fundRequests)) {
-                        fundRequests = data.requests; render();
-                    }
+                    if (JSON.stringify(data.requests) !== JSON.stringify(fundRequests)) { fundRequests = data.requests; render(); }
                 }).catch(err => console.error(err));
                 
                 fetch('/api/recharge').then(res => res.json()).then(data => {
-                    if (JSON.stringify(data.requests) !== JSON.stringify(rechargeRequests)) {
-                        rechargeRequests = data.requests; render();
-                    }
+                    if (JSON.stringify(data.requests) !== JSON.stringify(rechargeRequests)) { rechargeRequests = data.requests; render(); }
                 }).catch(err => console.error(err));
             }
         }, 10000);
