@@ -67,11 +67,11 @@
         ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.5); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.8); }
 
-        input, textarea {
+        input, textarea, select {
             transition: all 0.3s ease;
             background: rgba(255, 255, 255, 0.9) !important;
         }
-        input:focus, textarea:focus {
+        input:focus, textarea:focus, select:focus {
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3) !important;
             border-color: #3b82f6 !important;
         }
@@ -147,16 +147,16 @@
         let currentRechargeMode = 'frc'; // 'frc' or 'normal'
 
         const FRC_PLANS = [
-            { price: 140, otf: 21, desc: "UL Calls + 2GB, 28 Days (Only for HMD)" },
-            { price: 199, otf: 30, desc: "UL Calls + 2GB, 28 Days" },
-            { price: 299, otf: 89, desc: "UL Calls + 1.5GB/D, 28 Days" },
-            { price: 365, otf: 135, desc: "UL DATA + UL Calls, 28 Days" },
-            { price: 579, otf: 116, desc: "UL Calls + 1.5GB/D, 56 Days" },
-            { price: 649, otf: 162, desc: "UL DATA + UL Calls, 56 Days" },
-            { price: 859, otf: 116, desc: "UL Calls + 1.5GB/D, 84 Days" },
-            { price: 979, otf: 162, desc: "UL DATA + UL Calls + 3M ViMTV, 84 Days" },
-            { price: 3499, otf: 116, desc: "UL Calls + 1.5GB/D, 365 Days" },
-            { price: 3599, otf: 162, desc: "UL Calls + 2GB/D, 365 Days" }
+            { price: 140, otf: 21, mnpOtf: 60, desc: "UL Calls + 2GB, 28 Days (Only for HMD)" },
+            { price: 199, otf: 30, mnpOtf: 86, desc: "UL Calls + 2GB, 28 Days" },
+            { price: 299, otf: 89, mnpOtf: 199, desc: "UL Calls + 1.5GB/D, 28 Days" },
+            { price: 365, otf: 135, mnpOtf: 250, desc: "UL DATA + UL Calls, 28 Days" },
+            { price: 579, otf: 116, mnpOtf: 223, desc: "UL Calls + 1.5GB/D, 56 Days" },
+            { price: 649, otf: 162, mnpOtf: 266, desc: "UL DATA + UL Calls, 56 Days" },
+            { price: 859, otf: 116, mnpOtf: 223, desc: "UL Calls + 1.5GB/D, 84 Days" },
+            { price: 979, otf: 162, mnpOtf: 266, desc: "UL DATA + UL Calls + 3M ViMTV, 84 Days" },
+            { price: 3499, otf: 116, mnpOtf: 223, desc: "UL Calls + 1.5GB/D, 365 Days" },
+            { price: 3599, otf: 162, mnpOtf: 266, desc: "UL Calls + 2GB/D, 365 Days" }
         ];
 
         function setLoading(isLoading) { document.getElementById('loading-overlay').style.display = isLoading ? 'flex' : 'none'; }
@@ -290,19 +290,49 @@
                 </div>
             `).join('') || '<p class="text-gray-500 text-sm text-center py-4 bg-black/5 rounded-xl border border-dashed border-gray-300 font-medium">No pending fund requests.</p>';
 
-            let rechargeHtml = rechargeRequests.map(r => `
+            // Live Recharge Requests - Now with Editable Note and MNP/Fresh selector
+            let rechargeHtml = rechargeRequests.map(r => {
+                let pData;
+                try { pData = JSON.parse(r.plan_desc); } catch(e) { pData = { type: 'UNKNOWN', desc: r.plan_desc, fresh: r.otf_amount, mnp: 0 }; }
+                
+                return `
                 <div class="bg-white/60 p-4 rounded-xl border border-blue-200/50 mb-3 shadow-sm backdrop-blur-md">
                     <div class="text-sm mb-3 text-gray-700">
-                        <span class="font-bold text-gray-900">${r.username}</span> recharging <span class="font-black text-blue-600 tracking-wider">${r.phone}</span><br>
-                        <span class="text-xs bg-gray-100 px-2 py-1 rounded inline-block mt-1 mb-2 font-bold">${r.plan_desc}</span><br>
-                        OTF to credit: <span class="font-black text-green-600">₹${formatCurrency(r.otf_amount)}</span>
+                        <div class="flex justify-between">
+                            <span class="font-bold text-gray-900">${r.username}</span>
+                            <span class="font-black text-blue-600 tracking-wider">${r.phone}</span>
+                        </div>
+                        <span class="text-xs bg-gray-100 px-2 py-1 rounded inline-block mt-2 mb-2 font-bold">${pData.desc}</span><br>
+                        <div class="font-black text-gray-800 text-base">Plan: ₹${formatCurrency(r.plan_price)}</div>
                     </div>
+                    
+                    ${pData.type === 'FRC' ? `
+                        <div class="mb-2">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Recharge Type</label>
+                            <select onchange="document.getElementById('otf-input-${r.id}').value = this.value === 'mnp' ? ${pData.mnp} : ${pData.fresh}" class="w-full mt-1 p-2 rounded-lg border border-gray-200 text-xs font-bold outline-none focus:border-blue-500 bg-white">
+                                <option value="fresh">Fresh (OTF: ₹${pData.fresh})</option>
+                                <option value="mnp">MNP (OTF: ₹${pData.mnp})</option>
+                            </select>
+                        </div>
+                    ` : ''}
+
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Credit OTF (₹)</label>
+                            <input type="number" step="0.01" id="otf-input-${r.id}" value="${r.otf_amount}" class="w-full mt-1 p-2 rounded-lg border border-gray-200 text-sm font-black outline-none focus:border-blue-500 bg-white">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Admin Note</label>
+                            <input type="text" id="admin-note-${r.id}" value="${pData.type === 'FRC' ? 'FRC Recharge Approved' : 'Normal Recharge Approved'}" class="w-full mt-1 p-2 rounded-lg border border-gray-200 text-xs font-bold outline-none focus:border-blue-500 bg-white">
+                        </div>
+                    </div>
+
                     <div class="flex gap-2">
-                        <button onclick="handleRechargeAdmin(${r.id}, ${r.user_id}, ${r.plan_price}, ${r.otf_amount}, 'approve')" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 flex-[2] transition-all shadow-md shadow-blue-600/20">Credit OTF</button>
-                        <button onclick="handleRechargeAdmin(${r.id}, ${r.user_id}, ${r.plan_price}, ${r.otf_amount}, 'reject')" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-red-200 flex-1 transition-all">Fail (Refund)</button>
+                        <button onclick="processRechargeAdmin(${r.id}, ${r.user_id}, ${r.plan_price}, 'approve')" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 flex-[2] transition-all shadow-md shadow-blue-600/20">Approve & Credit</button>
+                        <button onclick="processRechargeAdmin(${r.id}, ${r.user_id}, ${r.plan_price}, 'reject')" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-red-200 flex-1 transition-all">Reject (Refund)</button>
                     </div>
                 </div>
-            `).join('') || '<p class="text-gray-500 text-sm text-center py-4 bg-black/5 rounded-xl border border-dashed border-gray-300 font-medium">No pending recharges.</p>';
+            `}).join('') || '<p class="text-gray-500 text-sm text-center py-4 bg-black/5 rounded-xl border border-dashed border-gray-300 font-medium">No pending recharges.</p>';
 
             app.innerHTML = `
                 <nav class="glass-nav text-white p-4 shadow-lg sticky top-0 z-40">
@@ -354,10 +384,10 @@
                     </div>
 
                     <div class="space-y-6">
-                        <div class="glass-card p-8 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.15s;">
+                        <div class="glass-card p-6 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.15s;">
                             <div class="absolute top-0 left-0 w-32 h-32 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
                             <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800 relative z-10"><i data-lucide="smartphone" class="text-blue-500"></i> Pending Recharges</h2>
-                            <div class="max-h-80 overflow-y-auto pr-2 relative z-10">${rechargeHtml}</div>
+                            <div class="max-h-[600px] overflow-y-auto pr-2 relative z-10">${rechargeHtml}</div>
                         </div>
 
                         <div class="glass-card p-8 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.20s;">
@@ -397,13 +427,13 @@
             let frcPlansHtml = FRC_PLANS.map((plan, index) => `
                 <label class="block relative p-3 border border-gray-200 bg-white rounded-xl cursor-pointer hover:border-blue-400 transition-all shadow-sm">
                     <div class="flex items-center gap-3">
-                        <input type="radio" name="recharge-plan" value="${plan.price}|${plan.otf}|${plan.desc}" class="w-4 h-4 text-blue-600" ${index===0?'required':''}>
-                        <div class="flex-1 flex justify-between items-center">
-                            <div class="font-bold text-sm text-gray-900 flex flex-col">
-                                <span class="text-base text-blue-900 tracking-tight">₹${plan.price}</span>
-                                <span class="text-xs text-gray-600 mt-1">${plan.desc}</span>
+                        <input type="radio" name="recharge-plan" value="${plan.price}|${plan.otf}|${plan.mnpOtf}|${plan.desc}" class="w-4 h-4 text-blue-600" ${index===0?'required':''}>
+                        <div class="flex-1 flex flex-col">
+                            <div class="font-bold text-sm text-gray-900 mb-1">₹${plan.price} <span class="text-xs text-gray-500 font-medium ml-1 truncate">- ${plan.desc}</span></div>
+                            <div class="flex gap-2">
+                                <span class="text-[10px] text-green-700 bg-green-50 px-2 py-0.5 rounded font-bold border border-green-100">Fresh: ₹${plan.otf}</span>
+                                <span class="text-[10px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded font-bold border border-blue-100">MNP: ₹${plan.mnpOtf}</span>
                             </div>
-                            <div class="text-xs text-green-700 bg-green-50 px-2 py-1 rounded font-bold border border-green-100">OTF: ₹${plan.otf}</div>
                         </div>
                     </div>
                 </label>
@@ -418,7 +448,9 @@
                 myPendingHtml += `<div class="bg-yellow-50/80 p-3 rounded-xl border border-yellow-200/50 mb-2 shadow-sm"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-600 flex items-center gap-1"><i data-lucide="hand-coins" class="w-3 h-3"></i> Wallet Request</span><span class="text-[10px] font-black text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded uppercase tracking-wider">Pending Admin</span></div><div class="font-black text-gray-800 mt-1">₹${formatCurrency(r.amount)}</div></div>`;
             });
             myRechargeReqs.forEach(r => {
-                myPendingHtml += `<div class="bg-blue-50/80 p-3 rounded-xl border border-blue-200/50 mb-2 shadow-sm"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-600 flex items-center gap-1"><i data-lucide="smartphone" class="w-3 h-3"></i> Recharge: ${r.phone}</span><span class="text-[10px] font-black text-blue-600 bg-blue-100 px-2 py-0.5 rounded uppercase tracking-wider">Pending OTF</span></div><div class="text-xs text-gray-700 font-bold truncate mt-1">${r.plan_desc}</div><div class="font-black text-gray-800 mt-1">₹${formatCurrency(r.plan_price)}</div></div>`;
+                let pDesc;
+                try { pDesc = JSON.parse(r.plan_desc).desc; } catch(e) { pDesc = r.plan_desc; }
+                myPendingHtml += `<div class="bg-blue-50/80 p-3 rounded-xl border border-blue-200/50 mb-2 shadow-sm"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-600 flex items-center gap-1"><i data-lucide="smartphone" class="w-3 h-3"></i> Recharge: ${r.phone}</span><span class="text-[10px] font-black text-blue-600 bg-blue-100 px-2 py-0.5 rounded uppercase tracking-wider">Pending OTF</span></div><div class="text-[10px] text-gray-700 font-bold truncate mt-1 bg-white/50 px-2 py-1 rounded inline-block">${pDesc}</div><div class="font-black text-gray-800 mt-1">Plan: ₹${formatCurrency(r.plan_price)}</div></div>`;
             });
             if (myPendingHtml === '') myPendingHtml = '<p class="text-gray-500 text-sm text-center py-5 bg-white/50 rounded-xl border border-dashed border-gray-300 font-medium">No active pending requests.</p>';
 
@@ -470,7 +502,7 @@
                                 <!-- FRC / Normal Toggle Tabs -->
                                 <div class="flex gap-1 mb-4 p-1 bg-gray-200/50 rounded-xl">
                                     <button id="tab-frc" onclick="setRechargeMode('frc')" class="flex-1 py-2 rounded-lg bg-white shadow-sm font-bold text-blue-600 text-xs transition-all">FRC Plans</button>
-                                    <button id="tab-normal" onclick="setRechargeMode('normal')" class="flex-1 py-2 rounded-lg text-gray-500 font-bold hover:bg-white/50 text-xs transition-all">Normal (3% OTF)</button>
+                                    <button id="tab-normal" onclick="setRechargeMode('normal')" class="flex-1 py-2 rounded-lg text-gray-500 font-bold hover:bg-white/50 text-xs transition-all">Normal (2% OTF)</button>
                                 </div>
 
                                 <!-- FRC Plans List -->
@@ -478,11 +510,11 @@
                                     ${frcPlansHtml}
                                 </div>
 
-                                <!-- Normal Recharge Input -->
+                                <!-- Normal Recharge Input (2% OTF) -->
                                 <div id="normal-section" class="hidden mb-4">
-                                    <input type="number" step="0.01" id="normal-amount" oninput="document.getElementById('normal-otf-display').innerText = formatCurrency(this.value * 0.03)" placeholder="Enter Recharge Amount (₹)" class="border-none bg-white p-4 rounded-xl w-full outline-none focus:ring-2 focus:ring-blue-500 font-black text-center text-xl shadow-inner border border-gray-100 mb-3">
+                                    <input type="number" step="0.01" id="normal-amount" oninput="document.getElementById('normal-otf-display').innerText = formatCurrency(this.value * 0.02)" placeholder="Enter Recharge Amount (₹)" class="border-none bg-white p-4 rounded-xl w-full outline-none focus:ring-2 focus:ring-blue-500 font-black text-center text-xl shadow-inner border border-gray-100 mb-3">
                                     <div class="bg-blue-50/50 text-blue-800 p-3 rounded-xl text-xs font-bold border border-blue-100 flex justify-between items-center shadow-sm">
-                                        <span>Estimated OTF (3%):</span>
+                                        <span>Estimated OTF (2%):</span>
                                         <span class="text-green-600 font-black text-sm">₹<span id="normal-otf-display">0.00</span></span>
                                     </div>
                                 </div>
@@ -512,7 +544,7 @@
                         <!-- My Pending Status Tracking -->
                         <div class="glass-card p-6 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.2s;">
                             <h2 class="text-lg font-bold flex items-center gap-2 text-gray-800 mb-4 border-b border-gray-100 pb-3"><i data-lucide="clock" class="text-blue-500 w-5 h-5"></i> My Pending Requests</h2>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-1">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[250px] overflow-y-auto pr-1">
                                 ${myPendingHtml}
                             </div>
                         </div>
@@ -573,8 +605,20 @@
             try { await apiCall('/api/requests', 'PUT', { requestId, userId, amount, action }); showToast(`Fund Requisition ${action}d`, 'success'); await loadData(); } catch (err) {}
         }
 
-        window.handleRechargeAdmin = async function(requestId, userId, planPrice, otfAmount, action) {
-            try { await apiCall('/api/recharge', 'PUT', { requestId, userId, planPrice, otfAmount, action }); showToast(`Recharge ${action === 'approve' ? 'commission credited' : 'failed and refunded'}`, 'success'); await loadData(); } catch (err) {}
+        window.processRechargeAdmin = async function(requestId, userId, planPrice, action) {
+            const otfInput = document.getElementById(`otf-input-${requestId}`);
+            const noteInput = document.getElementById(`admin-note-${requestId}`);
+            
+            const otfAmount = otfInput ? parseFloat(otfInput.value) : 0;
+            const adminNote = noteInput ? noteInput.value : '';
+
+            if (action === 'approve' && (isNaN(otfAmount) || otfAmount < 0)) return showToast('Invalid OTF Amount', 'error');
+
+            try { 
+                await apiCall('/api/recharge', 'PUT', { requestId, userId, planPrice, otfAmount, action, adminNote }); 
+                showToast(`Recharge ${action === 'approve' ? 'approved and OTF credited' : 'rejected and refunded'}`, 'success'); 
+                await loadData(); 
+            } catch (err) {}
         }
 
         window.requestFunds = async function() {
@@ -625,14 +669,25 @@
             if (currentRechargeMode === 'frc') {
                 const selectedPlan = document.querySelector('input[name="recharge-plan"]:checked');
                 if(!selectedPlan) return showToast('Please select an FRC plan', 'error');
+                
                 const parts = selectedPlan.value.split('|');
-                planPrice = parseFloat(parts[0]); otfAmount = parseFloat(parts[1]); planDesc = `FRC: ${parts[2]}`;
+                planPrice = parseFloat(parts[0]); 
+                const freshOtf = parseFloat(parts[1]);
+                const mnpOtf = parseFloat(parts[2]);
+                
+                otfAmount = freshOtf; // Defaults to normal OTF, admin will confirm
+                
+                // Pack as JSON string so admin dashboard can read MNP/Fresh data properly
+                planDesc = JSON.stringify({ type: 'FRC', desc: `FRC ${parts[0]}: ${parts[3]}`, fresh: freshOtf, mnp: mnpOtf });
             } else {
                 const amtRaw = document.getElementById('normal-amount').value;
                 planPrice = parseFloat(amtRaw);
                 if (isNaN(planPrice) || planPrice <= 0) return showToast('Enter a valid amount for Normal Recharge', 'error');
-                otfAmount = parseFloat((planPrice * 0.03).toFixed(2));
-                planDesc = `Normal Recharge`;
+                
+                otfAmount = parseFloat((planPrice * 0.02).toFixed(2));
+                
+                // Pack as JSON string
+                planDesc = JSON.stringify({ type: 'NORMAL', desc: `Normal Recharge` });
             }
 
             if(currentUser.balance < planPrice) return showToast(`Insufficient balance. You need ₹${planPrice}.`, 'error');
