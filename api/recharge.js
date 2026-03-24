@@ -41,7 +41,6 @@ export default async function handler(req, res) {
     } 
     
     else if (req.method === 'PUT') {
-      // NEW: We now extract adminNote from req.body
       const { requestId, userId, planPrice, otfAmount, action, adminNote } = req.body;
       
       await client.query('BEGIN');
@@ -49,12 +48,12 @@ export default async function handler(req, res) {
       await client.query("UPDATE recharge_requests SET status = $1 WHERE id = $2", [action, requestId]);
 
       if (action === 'approve') {
-        await client.query('UPDATE users SET balance = balance - $1 WHERE id = 1', [otfAmount]); 
+        // LOGIC CHANGED HERE: Admin is no longer deducted. Only User is credited the cashback.
         await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [otfAmount, userId]); 
         
         await client.query(
           "INSERT INTO transactions (type, amount, user_id, description) VALUES ('Credit', $1, $2, $3)",
-          [otfAmount, userId, adminNote || 'OTF Commission for successful recharge']
+          [otfAmount, userId, adminNote || 'Cashback for successful recharge']
         );
       } else if (action === 'reject') {
         await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [planPrice, userId]);
