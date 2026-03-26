@@ -5,21 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pratheek Enterprises - Subagent Portal</title>
     
+    <!-- Premium Font for Business Identity -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
+    <!-- Configure Tailwind to use the premium font -->
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] }
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    }
                 }
             }
         }
     </script>
     
     <style>
+        /* =======================================================
+           PREMIUM BUSINESS IDENTITY STYLES (GLASSMORPHISM)
+           ======================================================= */
+
         .animated-bg {
             background: linear-gradient(-45deg, #f0f4ff, #e0e7ff, #f8fafc, #dbeafe);
             background-size: 400% 400%;
@@ -56,7 +65,7 @@
         }
 
         .glass-nav {
-            background: rgba(30, 58, 138, 0.9);
+            background: rgba(30, 58, 138, 0.9); /* Deep Blue */
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -100,14 +109,16 @@
             position: relative;
             background: rgba(250, 204, 21, 0.9);
             backdrop-filter: blur(10px);
+            width: 100%;
         }
         .marquee-content {
             display: inline-block;
-            animation: marquee 20s linear infinite;
+            animation: marquee 16s linear infinite;
+            will-change: transform;
         }
         @keyframes marquee {
-            0% { transform: translateX(100vw); }
-            100% { transform: translateX(-100%); }
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(calc(-100% - 2rem)); }
         }
 
         #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 50; }
@@ -117,22 +128,41 @@
             border: 1px solid rgba(255,255,255,0.2);
         }
         
+        /* Custom Radio Buttons for FRC */
         input[type="radio"]:checked + div {
             border-color: #3b82f6;
             background-color: #eff6ff;
         }
+
+        /* Mobile safety */
+        body { overflow-x: hidden; }
+        #app { width: 100%; }
+
+        /* Reduce blur on small screens for performance */
+        @media (max-width: 640px) {
+            .glass-card, .glass-card-dark, .glass-nav { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        }
+
+        /* Tighten tables on mobile */
+        @media (max-width: 768px) {
+            table { font-size: 12px; }
+            th, td { padding: 10px 12px; }
+        }
     </style>
 </head>
-<body class="text-gray-800 font-sans min-h-screen animated-bg">
+<body class="text-gray-800 font-sans min-h-screen animated-bg overflow-x-hidden">
 
+    <!-- Toast Notification Container -->
     <div id="toast-container" class="flex flex-col gap-3"></div>
 
-  <div id="loading-overlay" class="glass-overlay flex flex-col items-center justify-center" style="display: none;">
+    <!-- Loading Spinner (Upgraded with frosted glass effect) -->
+    <div id="loading-overlay" class="glass-overlay flex flex-col items-center justify-center" style="display: none;">
         <i data-lucide="loader" class="animate-spin w-12 h-12 text-blue-600 mb-3 drop-shadow-lg"></i>
         <p class="text-blue-900 font-bold tracking-wide">Processing Securely...</p>
     </div>
 
-    <div id="app"></div>
+    <!-- Main Application Container -->
+    <div id="app" class="overflow-x-hidden"></div>
 
     <script>
         /* ==========================================
@@ -143,7 +173,7 @@
         let adminData = { adminWallet: 0, marqueeText: 'Loading...', transactions: [] };
         let usersData = [];
         let fundRequests = [];
-        let rechargeRequests = [];
+        let rechargeRequests = []; // NEW: Stores live recharges
         let currentRechargeMode = 'frc'; // 'frc' or 'normal'
 
         const FRC_PLANS = [
@@ -159,24 +189,51 @@
             { price: 3599, otf: 162, mnpOtf: 266, desc: "UL Calls + 2GB/D, 365 Days" }
         ];
 
-        function setLoading(isLoading) { document.getElementById('loading-overlay').style.display = isLoading ? 'flex' : 'none'; }
-        function formatCurrency(amount) { return Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+        // Helper to show loading state
+        function setLoading(isLoading) {
+            document.getElementById('loading-overlay').style.display = isLoading ? 'flex' : 'none';
+        }
 
+        // Helper to format currency properly with 2 decimals (paise)
+        function formatCurrency(amount) {
+            return Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // Custom Premium Toast Notification
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
+            
+            // Premium Toast Styling
             const bg = type === 'error' ? 'bg-red-600/90' : type === 'success' ? 'bg-green-600/90' : 'bg-blue-600/90';
+            
             toast.className = `toast ${bg} text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 font-semibold transform translate-x-full opacity-0`;
             toast.innerHTML = `<i data-lucide="${type === 'error' ? 'alert-circle' : 'check-circle'}" class="w-5 h-5"></i> <span>${message}</span>`;
+            
             container.appendChild(toast);
             lucide.createIcons();
-            setTimeout(() => { toast.classList.remove('translate-x-full', 'opacity-0'); toast.classList.add('translate-x-0', 'opacity-100'); }, 10);
-            setTimeout(() => { toast.classList.remove('translate-x-0', 'opacity-100'); toast.classList.add('translate-x-full', 'opacity-0'); setTimeout(() => toast.remove(), 400); }, 4000);
+
+            // Slide in animation
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+                toast.classList.add('translate-x-0', 'opacity-100');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-x-0', 'opacity-100');
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 400);
+            }, 4000);
         }
 
+        // Generic API Fetcher
         async function apiCall(endpoint, method = 'GET', body = null) {
-            const options = { method, headers: { 'Content-Type': 'application/json' } };
+            const options = { 
+                method, 
+                headers: { 'Content-Type': 'application/json' } 
+            };
             if (body) options.body = JSON.stringify(body);
+            
             setLoading(true);
             try {
                 const res = await fetch(endpoint, options);
@@ -184,41 +241,68 @@
                 if (!res.ok) throw new Error(data.error || 'Server error occurred');
                 return data;
             } catch (err) {
-                showToast(err.message, 'error'); throw err;
-            } finally { setLoading(false); }
+                showToast(err.message, 'error');
+                throw err;
+            } finally {
+                setLoading(false);
+            }
         }
 
+        // Fetch fresh data from backend
         async function loadData() {
             if (!currentUser) return;
             try {
-                const [adminRes, usersRes, reqRes, rechargeRes] = await Promise.all([
-                    apiCall('/api/admin'), apiCall('/api/users'), apiCall('/api/requests'), apiCall('/api/recharge')
+                const [adminRes, usersRes] = await Promise.all([
+                    apiCall('/api/admin'),
+                    apiCall('/api/users')
                 ]);
+                
                 adminData = adminRes;
                 usersData = usersRes.users;
-                fundRequests = reqRes.requests;
-                rechargeRequests = rechargeRes.requests;
+
+                // Fetch live pending requests if Admin
+                if (currentUser.role === 'admin') {
+                    const reqRes = await apiCall('/api/requests');
+                    fundRequests = reqRes.requests;
+
+                    // Fetch live recharge requests
+                    const rechargeRes = await apiCall('/api/recharge');
+                    rechargeRequests = rechargeRes.requests;
+                }
                 
+                // Refresh currentUser balance if they are a regular user
                 if (currentUser.role === 'user') {
                     const freshUser = usersData.find(u => u.id === currentUser.id);
                     if (freshUser) {
                         currentUser.balance = freshUser.balance;
                         localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    } else { logout(); return; }
+                    } else {
+                        // User was deleted by admin
+                        logout();
+                        return;
+                    }
                 }
+                
                 render();
-            } catch (error) { console.error("Failed to load data:", error); }
+            } catch (error) {
+                console.error("Failed to load data:", error);
+            }
         }
 
         /* ==========================================
            RENDERING LOGIC
            ========================================== */
+        
         const app = document.getElementById('app');
 
         function render() {
-            if (!currentUser) renderLogin();
-            else if (currentUser.role === 'admin') renderAdminDashboard();
-            else renderUserDashboard();
+            if (!currentUser) {
+                renderLogin();
+            } else if (currentUser.role === 'admin') {
+                renderAdminDashboard();
+            } else {
+                renderUserDashboard();
+            }
             lucide.createIcons();
         }
 
@@ -226,7 +310,7 @@
         function renderLogin() {
             app.innerHTML = `
                 <div class="min-h-screen flex items-center justify-center p-4">
-                    <div class="glass-card p-10 rounded-3xl w-full max-w-md animate-fade-in border-t-4 border-t-blue-600">
+                    <div class="glass-card p-8 sm:p-10 rounded-3xl w-full max-w-md animate-fade-in border-t-4 border-t-blue-600">
                         <div class="text-center mb-8">
                             <div class="bg-blue-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
                                 <i data-lucide="building-2" class="text-blue-600 w-8 h-8"></i>
@@ -235,20 +319,38 @@
                             <p class="text-gray-500 font-medium mt-2">Secure Subagent Portal</p>
                         </div>
                         <form id="login-form" class="space-y-5">
-                            <div><label class="block text-sm font-bold text-gray-700 mb-1">Username</label><input type="text" id="username" class="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none" required placeholder="Enter your username"></div>
-                            <div><label class="block text-sm font-bold text-gray-700 mb-1">Password</label><input type="password" id="password" class="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none" required placeholder="••••••••"></div>
-                            <button type="submit" class="w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30 transition-all mt-4">Secure Login</button>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Username</label>
+                                <input type="text" id="username" class="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none" required placeholder="Enter your username">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Password</label>
+                                <input type="password" id="password" class="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none" required placeholder="••••••••">
+                            </div>
+                            <button type="submit" class="w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30 transition-all mt-4">
+                                Secure Login
+                            </button>
                         </form>
                     </div>
                 </div>
             `;
+
             document.getElementById('login-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const username = document.getElementById('username').value, password = document.getElementById('password').value;
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+
                 try {
                     const data = await apiCall('/api/login', 'POST', { username, password });
-                    if (data.success) { currentUser = data.user; localStorage.setItem('currentUser', JSON.stringify(currentUser)); showToast(`Welcome back, ${currentUser.username}`, 'success'); await loadData(); }
-                } catch (e) { }
+                    if (data.success) {
+                        currentUser = data.user;
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        showToast(`Welcome back, ${currentUser.username}`, 'success');
+                        await loadData();
+                    }
+                } catch (e) {
+                    // Handled by apiCall
+                }
             });
         }
 
@@ -256,36 +358,41 @@
         function renderAdminDashboard() {
             let usersHtml = usersData.map(u => `
                 <tr class="border-b border-gray-100 hover:bg-black/5 transition-colors">
-                    <td class="px-5 py-4 font-bold text-gray-800">${u.username}</td>
-                    <td class="px-5 py-4 font-black text-green-600">₹${formatCurrency(u.balance)}</td>
-                    <td class="px-5 py-4 flex gap-2">
-                        <button onclick="handleCreditDebit(${u.id}, '${u.username}', 'Credit')" class="bg-green-100 text-green-700 px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-green-200 shadow-sm transition-colors">Credit</button>
-                        <button onclick="handleCreditDebit(${u.id}, '${u.username}', 'Debit')" class="bg-red-100 text-red-700 px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-red-200 shadow-sm transition-colors">Debit</button>
-                        <button onclick="handleDeleteUser(${u.id}, '${u.username}')" class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-300 shadow-sm transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    <td class="px-4 sm:px-5 py-3 sm:py-4 font-bold text-gray-800">${u.username}</td>
+                    <td class="px-4 sm:px-5 py-3 sm:py-4 font-black text-green-600">₹${formatCurrency(u.balance)}</td>
+                    <td class="px-4 sm:px-5 py-3 sm:py-4 flex flex-wrap gap-2">
+                        <button onclick="handleCreditDebit(${u.id}, '${u.username}', 'Credit')" class="bg-green-100 text-green-700 px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold hover:bg-green-200 shadow-sm transition-colors">Credit</button>
+                        <button onclick="handleCreditDebit(${u.id}, '${u.username}', 'Debit')" class="bg-red-100 text-red-700 px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold hover:bg-red-200 shadow-sm transition-colors">Debit</button>
+                        <button onclick="handleDeleteUser(${u.id}, '${u.username}')" class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs sm:text-sm hover:bg-gray-300 shadow-sm transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </td>
                 </tr>
-            `).join('') || '<tr><td colspan="3" class="p-6 text-center text-gray-500 font-medium">No subagents active. Add one below.</td></tr>';
+            `).join('');
+
+            if(usersHtml === '') usersHtml = '<tr><td colspan="3" class="p-6 text-center text-gray-500 font-medium">No subagents active. Add one below.</td></tr>';
 
             let transactionsHtml = adminData.transactions.map(t => {
                 const date = new Date(t.created_at).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
                 return `
                 <tr class="border-b border-gray-100 hover:bg-black/5 transition-colors">
-                    <td class="px-5 py-3 text-xs text-gray-500 font-semibold">${date}</td>
-                    <td class="px-5 py-3 font-bold text-gray-800">${t.user || 'System'}</td>
-                    <td class="px-5 py-3"><span class="px-3 py-1 inline-flex text-xs font-bold rounded-full ${t.type === 'Credit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${t.type}</span></td>
-                    <td class="px-5 py-3 font-black ${t.type === 'Credit' ? 'text-green-600' : 'text-red-600'}">₹${formatCurrency(t.amount)}</td>
-                    <td class="px-5 py-3 text-sm text-gray-600 font-medium">${t.description}</td>
+                    <td class="px-4 sm:px-5 py-3 text-xs text-gray-500 font-semibold">${date}</td>
+                    <td class="px-4 sm:px-5 py-3 font-bold text-gray-800">${t.user || 'System'}</td>
+                    <td class="px-4 sm:px-5 py-3"><span class="px-3 py-1 inline-flex text-xs font-bold rounded-full ${t.type === 'Credit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${t.type}</span></td>
+                    <td class="px-4 sm:px-5 py-3 font-black ${t.type === 'Credit' ? 'text-green-600' : 'text-red-600'}">₹${formatCurrency(t.amount)}</td>
+                    <td class="px-4 sm:px-5 py-3 text-sm text-gray-600 font-medium">${t.description}</td>
                 </tr>
-            `}).join('') || '<tr><td colspan="5" class="p-6 text-center text-gray-500 font-medium">No transactions recorded yet.</td></tr>';
+            `}).join('');
 
+            if(transactionsHtml === '') transactionsHtml = '<tr><td colspan="5" class="p-6 text-center text-gray-500 font-medium">No transactions recorded yet.</td></tr>';
+
+            // Displays the live fund requests with Approve/Reject buttons
             let requestsHtml = fundRequests.map(r => `
                 <div class="bg-white/60 p-4 rounded-xl border border-yellow-200/50 mb-3 shadow-sm backdrop-blur-md">
                     <div class="text-sm mb-3">
                         <span class="font-bold text-gray-900">${r.username}</span> requested <span class="font-black text-green-600 bg-green-100 px-2 py-0.5 rounded">₹${formatCurrency(r.amount)}</span>
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 flex-wrap">
                         <button onclick="handleRequest(${r.id}, ${r.user_id}, ${r.amount}, 'approve')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-700 flex-1 transition-all shadow-md shadow-green-600/20">Approve</button>
-                        <button onclick="handleRequest(${r.id}, ${r.user_id}, ${r.amount}, 'reject')" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-red-200 transition-all">Reject</button>
+                        <button onclick="handleRequest(${r.id}, ${r.user_id}, ${r.amount}, 'reject')" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-red-200 flex-1 transition-all">Reject</button>
                     </div>
                 </div>
             `).join('') || '<p class="text-gray-500 text-sm text-center py-4 bg-black/5 rounded-xl border border-dashed border-gray-300 font-medium">No pending fund requests.</p>';
@@ -298,7 +405,7 @@
                 return `
                 <div class="bg-white/60 p-4 rounded-xl border border-blue-200/50 mb-3 shadow-sm backdrop-blur-md">
                     <div class="text-sm mb-3 text-gray-700">
-                        <div class="flex justify-between">
+                        <div class="flex justify-between gap-2 flex-wrap">
                             <span class="font-bold text-gray-900">${r.username}</span>
                             <span class="font-black text-blue-600 tracking-wider">${r.phone}</span>
                         </div>
@@ -310,15 +417,15 @@
                         <div class="mb-2">
                             <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Recharge Type</label>
                             <select onchange="document.getElementById('otf-input-${r.id}').value = this.value === 'mnp' ? ${pData.mnp} : ${pData.fresh}" class="w-full mt-1 p-2 rounded-lg border border-gray-200 text-xs font-bold outline-none focus:border-blue-500 bg-white">
-                                <option value="fresh">Fresh (OTF: ₹${pData.fresh})</option>
-                                <option value="mnp">MNP (OTF: ₹${pData.mnp})</option>
+                                <option value="fresh">Fresh (Cashback: ₹${pData.fresh})</option>
+                                <option value="mnp">MNP (Cashback: ₹${pData.mnp})</option>
                             </select>
                         </div>
                     ` : ''}
 
-                    <div class="grid grid-cols-2 gap-2 mb-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                         <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Credit OTF (₹)</label>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Cashback Amount (₹)</label>
                             <input type="number" step="0.01" id="otf-input-${r.id}" value="${r.otf_amount}" class="w-full mt-1 p-2 rounded-lg border border-gray-200 text-sm font-black outline-none focus:border-blue-500 bg-white">
                         </div>
                         <div>
@@ -327,14 +434,15 @@
                         </div>
                     </div>
 
-                    <div class="flex gap-2">
-                        <button onclick="processRechargeAdmin(${r.id}, ${r.user_id}, ${r.plan_price}, 'approve')" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 flex-[2] transition-all shadow-md shadow-blue-600/20">Approve & Credit</button>
-                        <button onclick="processRechargeAdmin(${r.id}, ${r.user_id}, ${r.plan_price}, 'reject')" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-red-200 flex-1 transition-all">Reject (Refund)</button>
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="processRechargeAdmin(${r.id}, ${r.user_id}, ${r.plan_price}, 'approve')" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 flex-[2] transition-all shadow-md shadow-blue-600/20 w-full sm:w-auto">Approve & Credit</button>
+                        <button onclick="processRechargeAdmin(${r.id}, ${r.user_id}, ${r.plan_price}, 'reject')" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-red-200 flex-1 transition-all w-full sm:w-auto">Reject (Refund)</button>
                     </div>
                 </div>
             `}).join('') || '<p class="text-gray-500 text-sm text-center py-4 bg-black/5 rounded-xl border border-dashed border-gray-300 font-medium">No pending recharges.</p>';
 
             app.innerHTML = `
+                <!-- Navbar -->
                 <nav class="glass-nav text-white p-4 shadow-lg sticky top-0 z-40">
                     <div class="max-w-7xl mx-auto flex justify-between items-center">
                         <h1 class="text-xl font-extrabold flex items-center gap-3 tracking-wide"><div class="bg-white/20 p-1.5 rounded-lg"><i data-lucide="shield-check" class="w-5 h-5"></i></div> Admin Workspace</h1>
@@ -343,85 +451,138 @@
                 </nav>
 
                 <div class="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                    
+                    <!-- Left Column -->
                     <div class="lg:col-span-2 space-y-6">
-                        <div class="glass-card p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.1s;">
+                        
+                        <!-- Admin Wallet Card -->
+                        <div class="glass-card p-5 sm:p-7 lg:p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.1s;">
                             <h2 class="text-sm font-bold mb-2 flex items-center gap-2 text-gray-500 uppercase tracking-widest"><i data-lucide="wallet" class="text-blue-500 w-4 h-4"></i> Master Treasury</h2>
-                            <div class="text-5xl font-black text-gray-900 mb-6 tracking-tight">₹${formatCurrency(adminData.adminWallet)}</div>
-                            <div class="flex gap-3 bg-black/5 p-2 rounded-2xl border border-white/50">
+                            <div class="text-4xl sm:text-5xl font-black text-gray-900 mb-6 tracking-tight">₹${formatCurrency(adminData.adminWallet)}</div>
+                            <div class="flex flex-col sm:flex-row gap-3 bg-black/5 p-2 rounded-2xl border border-white/50">
                                 <input type="number" step="0.01" id="admin-wallet-amount" placeholder="Amount (₹)" class="border-none bg-white p-3 rounded-xl flex-1 focus:ring-2 focus:ring-blue-500 outline-none font-bold">
-                                <button onclick="updateAdminWallet('add')" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 shadow-md transition-all">Add</button>
-                                <button onclick="updateAdminWallet('remove')" class="bg-gray-800 text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-900 shadow-md transition-all">Withdraw</button>
+                                <div class="flex gap-2">
+                                  <button onclick="updateAdminWallet('add')" class="bg-blue-600 text-white px-4 sm:px-6 py-3 rounded-xl font-bold hover:bg-blue-700 shadow-md transition-all w-full sm:w-auto">Add</button>
+                                  <button onclick="updateAdminWallet('remove')" class="bg-gray-800 text-white px-4 sm:px-6 py-3 rounded-xl font-bold hover:bg-gray-900 shadow-md transition-all w-full sm:w-auto">Withdraw</button>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="glass-card p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.2s;">
+                        <!-- User Management -->
+                        <div class="glass-card p-5 sm:p-7 lg:p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.2s;">
                             <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800"><i data-lucide="users" class="text-blue-500"></i> Manage Subagents</h2>
-                            <form id="add-user-form" class="flex gap-3 mb-6 bg-black/5 p-2 rounded-2xl border border-white/50">
+                            
+                            <form id="add-user-form" class="flex flex-col md:flex-row gap-3 mb-6 bg-black/5 p-2 rounded-2xl border border-white/50">
                                 <input type="text" id="new-username" placeholder="Subagent Username" class="border-none bg-white p-3 rounded-xl flex-1 outline-none font-medium" required>
                                 <input type="text" id="new-password" placeholder="Secure Password" class="border-none bg-white p-3 rounded-xl flex-1 outline-none font-medium" required>
-                                <button type="submit" class="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-black shadow-md transition-all">Create</button>
+                                <button type="submit" class="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-black shadow-md transition-all w-full md:w-auto">Create</button>
                             </form>
-                            <div class="overflow-hidden border border-gray-100 rounded-2xl bg-white/50">
-                                <table class="w-full text-left border-collapse">
-                                    <thead><tr class="bg-black/5 text-gray-500 text-xs uppercase tracking-wider"><th class="px-5 py-4 font-bold">Agent Name</th><th class="px-5 py-4 font-bold">Ledger Balance</th><th class="px-5 py-4 font-bold">Controls</th></tr></thead>
+
+                            <div class="overflow-hidden border border-gray-100 rounded-2xl bg-white/50 overflow-x-auto">
+                                <table class="w-full text-left border-collapse min-w-[480px]">
+                                    <thead>
+                                        <tr class="bg-black/5 text-gray-500 text-xs uppercase tracking-wider">
+                                            <th class="px-4 sm:px-5 py-3 sm:py-4 font-bold">Agent Name</th>
+                                            <th class="px-4 sm:px-5 py-3 sm:py-4 font-bold">Ledger Balance</th>
+                                            <th class="px-4 sm:px-5 py-3 sm:py-4 font-bold">Controls</th>
+                                        </tr>
+                                    </thead>
                                     <tbody>${usersHtml}</tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <div class="glass-card p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.3s;">
+                        <!-- Transaction History -->
+                        <div class="glass-card p-5 sm:p-7 lg:p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.3s;">
                             <div class="flex justify-between items-center mb-6">
                                 <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><i data-lucide="history" class="text-blue-500"></i> Ledger History</h2>
                                 <button onclick="loadData()" class="text-blue-600 hover:bg-blue-50 font-bold flex items-center gap-2 text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-blue-100 transition-all"><i data-lucide="refresh-cw" class="w-4 h-4"></i> Sync</button>
                             </div>
                             <div class="overflow-x-auto h-96 overflow-y-auto border border-gray-100 rounded-2xl bg-white/50 relative">
-                                <table class="w-full text-left border-collapse text-sm">
-                                    <thead class="sticky top-0 bg-gray-50 shadow-sm z-10"><tr class="text-gray-500 text-xs uppercase tracking-wider"><th class="px-5 py-4 font-bold">Timestamp</th><th class="px-5 py-4 font-bold">Entity</th><th class="px-5 py-4 font-bold">Flow</th><th class="px-5 py-4 font-bold">Amount</th><th class="px-5 py-4 font-bold">Notes</th></tr></thead>
+                                <table class="w-full text-left border-collapse min-w-[600px]">
+                                    <thead class="sticky top-0 bg-gray-50 shadow-sm z-10">
+                                        <tr class="text-gray-500 text-xs uppercase tracking-wider">
+                                            <th class="px-4 sm:px-5 py-3 sm:py-4 font-bold">Timestamp</th>
+                                            <th class="px-4 sm:px-5 py-3 sm:py-4 font-bold">Entity</th>
+                                            <th class="px-4 sm:px-5 py-3 sm:py-4 font-bold">Flow</th>
+                                            <th class="px-4 sm:px-5 py-3 sm:py-4 font-bold">Amount</th>
+                                            <th class="px-4 sm:px-5 py-3 sm:py-4 font-bold">Notes</th>
+                                        </tr>
+                                    </thead>
                                     <tbody>${transactionsHtml}</tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
 
+                    <!-- Right Column -->
                     <div class="space-y-6">
-                        <div class="glass-card p-6 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.15s;">
+                        
+                        <!-- Recharge Requests -->
+                        <div class="glass-card p-5 sm:p-6 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.15s;">
                             <div class="absolute top-0 left-0 w-32 h-32 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
                             <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800 relative z-10"><i data-lucide="smartphone" class="text-blue-500"></i> Pending Recharges</h2>
-                            <div class="max-h-[600px] overflow-y-auto pr-2 relative z-10">${rechargeHtml}</div>
+                            <div class="max-h-[600px] overflow-y-auto pr-2 relative z-10">
+                                ${rechargeHtml}
+                            </div>
                         </div>
 
-                        <div class="glass-card p-8 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.20s;">
+                        <!-- Fund Requests -->
+                        <div class="glass-card p-5 sm:p-8 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.20s;">
                             <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
                             <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800 relative z-10"><i data-lucide="bell-ring" class="text-yellow-500"></i> Pending Fund Req.</h2>
-                            <div class="max-h-80 overflow-y-auto pr-2 relative z-10">${requestsHtml}</div>
+                            <div class="max-h-80 overflow-y-auto pr-2 relative z-10">
+                                ${requestsHtml}
+                            </div>
                         </div>
 
-                        <div class="glass-card p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.25s;">
+                        <!-- Notification Settings -->
+                        <div class="glass-card p-5 sm:p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.25s;">
                             <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800"><i data-lucide="broadcast" class="text-blue-500"></i> Global Announcement</h2>
                             <textarea id="marquee-input" class="w-full border-none bg-white p-4 rounded-2xl h-32 mb-4 outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium shadow-inner resize-none">${adminData.marqueeText}</textarea>
                             <button onclick="updateMarquee()" class="w-full bg-gray-900 text-white px-4 py-3 rounded-xl font-bold hover:bg-black shadow-lg transition-all">Broadcast Message</button>
                         </div>
+
                     </div>
                 </div>
             `;
+
+            // Event Listeners for Admin UI
             document.getElementById('add-user-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 try {
                     await apiCall('/api/users', 'POST', { username: document.getElementById('new-username').value, password: document.getElementById('new-password').value });
-                    showToast('Subagent credential created', 'success'); await loadData();
+                    showToast('Subagent credential created', 'success');
+                    await loadData();
                 } catch (err) {}
             });
         }
 
         /* --- USER DASHBOARD --- */
         function renderUserDashboard() {
-            // My Ledger
+            // Filter transactions strictly for this user
             const userTx = adminData.transactions.filter(t => t.user === currentUser.username);
+            
             let userTransactionsHtml = userTx.map(t => {
                 const date = new Date(t.created_at).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
                 const isIncoming = t.type === 'Credit';
-                return `<tr class="border-b border-gray-100 hover:bg-black/5 transition-colors"><td class="px-5 py-4 text-xs text-gray-500 font-semibold">${date}</td><td class="px-5 py-4"><span class="px-3 py-1 inline-flex text-xs font-bold rounded-full ${isIncoming ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${isIncoming ? 'Inbound' : 'Outbound'}</span></td><td class="px-5 py-4 font-black ${isIncoming ? 'text-green-600' : 'text-red-600'}">${isIncoming ? '+' : '-'}₹${formatCurrency(t.amount)}</td><td class="px-5 py-4 text-sm text-gray-600 font-medium">${t.description}</td></tr>`;
-            }).join('') || '<tr><td colspan="4" class="p-8 text-center text-gray-500 font-medium">Your ledger is currently empty.</td></tr>';
+                
+                return `
+                <tr class="border-b border-gray-100 hover:bg-black/5 transition-colors">
+                    <td class="px-4 sm:px-5 py-4 text-xs text-gray-500 font-semibold">${date}</td>
+                    <td class="px-4 sm:px-5 py-4">
+                        <span class="px-3 py-1 inline-flex text-xs font-bold rounded-full ${isIncoming ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            ${isIncoming ? 'Inbound' : 'Outbound'}
+                        </span>
+                    </td>
+                    <td class="px-4 sm:px-5 py-4 font-black ${isIncoming ? 'text-green-600' : 'text-red-600'}">
+                        ${isIncoming ? '+' : '-'}₹${formatCurrency(t.amount)}
+                    </td>
+                    <td class="px-4 sm:px-5 py-4 text-sm text-gray-600 font-medium">${t.description}</td>
+                </tr>
+            `}).join('');
+
+            if(userTransactionsHtml === '') userTransactionsHtml = '<tr><td colspan="4" class="p-8 text-center text-gray-500 font-medium">Your ledger is currently empty.</td></tr>';
 
             // FRC Plans Html 
             let frcPlansHtml = FRC_PLANS.map((plan, index) => `
@@ -445,36 +606,58 @@
             let myPendingHtml = '';
             
             myFundReqs.forEach(r => {
-                myPendingHtml += `<div class="bg-yellow-50/80 p-3 rounded-xl border border-yellow-200/50 mb-2 shadow-sm"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-600 flex items-center gap-1"><i data-lucide="hand-coins" class="w-3 h-3"></i> Wallet Request</span><span class="text-[10px] font-black text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded uppercase tracking-wider">Pending Admin</span></div><div class="font-black text-gray-800 mt-1">₹${formatCurrency(r.amount)}</div></div>`;
+                myPendingHtml += `
+                <div class="bg-yellow-50/80 p-3 rounded-xl border border-yellow-200/50 mb-2 shadow-sm">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-bold text-gray-600 flex items-center gap-1"><i data-lucide="hand-coins" class="w-3 h-3"></i> Wallet Request</span>
+                        <span class="text-[10px] font-black text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded uppercase tracking-wider">Pending Admin</span>
+                    </div>
+                    <div class="font-black text-gray-800 mt-1">₹${formatCurrency(r.amount)}</div>
+                </div>`;
             });
             myRechargeReqs.forEach(r => {
                 let pDesc;
                 try { pDesc = JSON.parse(r.plan_desc).desc; } catch(e) { pDesc = r.plan_desc; }
-                myPendingHtml += `<div class="bg-blue-50/80 p-3 rounded-xl border border-blue-200/50 mb-2 shadow-sm"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-gray-600 flex items-center gap-1"><i data-lucide="smartphone" class="w-3 h-3"></i> Recharge: ${r.phone}</span><span class="text-[10px] font-black text-blue-600 bg-blue-100 px-2 py-0.5 rounded uppercase tracking-wider">Pending OTF</span></div><div class="text-[10px] text-gray-700 font-bold truncate mt-1 bg-white/50 px-2 py-1 rounded inline-block">${pDesc}</div><div class="font-black text-gray-800 mt-1">Plan: ₹${formatCurrency(r.plan_price)}</div></div>`;
+                myPendingHtml += `
+                <div class="bg-blue-50/80 p-3 rounded-xl border border-blue-200/50 mb-2 shadow-sm">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-bold text-gray-600 flex items-center gap-1"><i data-lucide="smartphone" class="w-3 h-3"></i> Recharge: ${r.phone}</span>
+                        <span class="text-[10px] font-black text-blue-600 bg-blue-100 px-2 py-0.5 rounded uppercase tracking-wider">Pending Cashback</span>
+                    </div>
+                    <div class="text-[10px] text-gray-700 font-bold truncate mt-1 bg-white/50 px-2 py-1 rounded inline-block">${pDesc}</div>
+                    <div class="font-black text-gray-800 mt-1">Plan: ₹${formatCurrency(r.plan_price)}</div>
+                </div>`;
             });
             if (myPendingHtml === '') myPendingHtml = '<p class="text-gray-500 text-sm text-center py-5 bg-white/50 rounded-xl border border-dashed border-gray-300 font-medium">No active pending requests.</p>';
 
             app.innerHTML = `
+                <!-- Marquee Notification -->
                 <div class="marquee-container text-yellow-900 py-2.5 font-bold shadow-md border-b border-yellow-500/30 text-sm tracking-wide">
                     <div class="marquee-content w-full">${adminData.marqueeText}</div>
                 </div>
 
+                <!-- Navbar -->
                 <nav class="glass-nav text-white p-4 shadow-lg sticky top-0 z-40">
                     <div class="max-w-6xl mx-auto flex justify-between items-center">
-                        <h1 class="text-xl font-extrabold flex items-center gap-3 tracking-wide"><div class="bg-white/20 p-1.5 rounded-lg"><i data-lucide="user-circle" class="w-5 h-5"></i></div> ${currentUser.username}</h1>
+                        <h1 class="text-xl font-extrabold flex items-center gap-3 tracking-wide">
+                            <div class="bg-white/20 p-1.5 rounded-lg"><i data-lucide="user-circle" class="w-5 h-5"></i></div> 
+                            ${currentUser.username}
+                        </h1>
                         <button onclick="logout()" class="flex items-center gap-2 hover:bg-white/10 px-4 py-2 rounded-xl transition-all font-semibold text-sm"><i data-lucide="log-out" class="w-4 h-4"></i> Sign Out</button>
                     </div>
                 </nav>
 
                 <div class="max-w-6xl mx-auto p-4 grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
-                    <!-- Wallet & Recharge Column -->
+                    
+                    <!-- Wallet Info Column -->
                     <div class="md:col-span-1 space-y-6">
                         
                         <!-- Balance Card -->
                         <div class="glass-card p-6 rounded-3xl text-center relative overflow-hidden animate-fade-in" style="animation-delay: 0.1s;">
                             <div class="absolute -top-10 -right-10 w-40 h-40 bg-green-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+                            
                             <h2 class="text-gray-500 font-bold mb-3 uppercase text-xs tracking-widest relative z-10">Available Balance</h2>
-                            <div class="text-5xl font-black text-gray-900 mb-6 drop-shadow-sm relative z-10 tracking-tight">₹${formatCurrency(currentUser.balance)}</div>
+                            <div class="text-4xl sm:text-5xl font-black text-gray-900 mb-6 drop-shadow-sm relative z-10 tracking-tight">₹${formatCurrency(currentUser.balance)}</div>
                             
                             <div class="bg-white/80 p-4 rounded-2xl border border-white relative z-10 shadow-sm">
                                 <h3 class="font-extrabold text-gray-800 mb-3 text-sm text-left flex items-center gap-2"><i data-lucide="hand-coins" class="w-4 h-4 text-blue-600"></i> Request Funds</h3>
@@ -502,7 +685,7 @@
                                 <!-- FRC / Normal Toggle Tabs -->
                                 <div class="flex gap-1 mb-4 p-1 bg-gray-200/50 rounded-xl">
                                     <button id="tab-frc" onclick="setRechargeMode('frc')" class="flex-1 py-2 rounded-lg bg-white shadow-sm font-bold text-blue-600 text-xs transition-all">FRC Plans</button>
-                                    <button id="tab-normal" onclick="setRechargeMode('normal')" class="flex-1 py-2 rounded-lg text-gray-500 font-bold hover:bg-white/50 text-xs transition-all">Normal (2% OTF)</button>
+                                    <button id="tab-normal" onclick="setRechargeMode('normal')" class="flex-1 py-2 rounded-lg text-gray-500 font-bold hover:bg-white/50 text-xs transition-all">Normal (2% Cashback)</button>
                                 </div>
 
                                 <!-- FRC Plans List -->
@@ -514,20 +697,20 @@
                                 <div id="normal-section" class="hidden mb-4">
                                     <input type="number" step="0.01" id="normal-amount" oninput="document.getElementById('normal-otf-display').innerText = formatCurrency(this.value * 0.02)" placeholder="Enter Recharge Amount (₹)" class="border-none bg-white p-4 rounded-xl w-full outline-none focus:ring-2 focus:ring-blue-500 font-black text-center text-xl shadow-inner border border-gray-100 mb-3">
                                     <div class="bg-blue-50/50 text-blue-800 p-3 rounded-xl text-xs font-bold border border-blue-100 flex justify-between items-center shadow-sm">
-                                        <span>Estimated OTF (2%):</span>
+                                        <span>Estimated Cashback (2%):</span>
                                         <span class="text-green-600 font-black text-sm">₹<span id="normal-otf-display">0.00</span></span>
                                     </div>
                                 </div>
 
-                                <div class="flex gap-2 pt-2 border-t border-gray-100/50">
-                                    <button onclick="cancelRecharge()" class="bg-gray-200 text-gray-700 px-4 py-3 rounded-xl font-bold hover:bg-gray-300 transition-all flex-[1]">Back</button>
-                                    <button onclick="submitRecharge()" class="bg-green-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-600/30 flex-[2]">Confirm Pay</button>
+                                <div class="flex gap-2 pt-2 border-t border-gray-100/50 flex-wrap">
+                                    <button onclick="cancelRecharge()" class="bg-gray-200 text-gray-700 px-4 py-3 rounded-xl font-bold hover:bg-gray-300 transition-all flex-1">Back</button>
+                                    <button onclick="submitRecharge()" class="bg-green-600 text-white px-4 py-3 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-600/30 flex-[2] w-full sm:w-auto">Confirm Pay</button>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Admin Contact -->
-                        <div class="glass-card-dark text-white p-8 rounded-3xl relative overflow-hidden animate-fade-in" style="animation-delay: 0.2s;">
+                        <div class="glass-card-dark text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden animate-fade-in" style="animation-delay: 0.2s;">
                             <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-blue-500 rounded-full mix-blend-overlay filter blur-3xl opacity-30"></div>
                             <h2 class="text-lg font-bold mb-5 flex items-center gap-3 border-b border-white/10 pb-4 relative z-10"><i data-lucide="headset" class="text-blue-400"></i> Priority Support</h2>
                             <p class="text-sm mb-6 text-gray-300 relative z-10 leading-relaxed font-medium">Dedicated support line for subagent requisitions and technical assistance.</p>
@@ -542,7 +725,7 @@
                     <div class="md:col-span-2 space-y-6">
                         
                         <!-- My Pending Status Tracking -->
-                        <div class="glass-card p-6 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.2s;">
+                        <div class="glass-card p-5 sm:p-6 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.2s;">
                             <h2 class="text-lg font-bold flex items-center gap-2 text-gray-800 mb-4 border-b border-gray-100 pb-3"><i data-lucide="clock" class="text-blue-500 w-5 h-5"></i> My Pending Requests</h2>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[250px] overflow-y-auto pr-1">
                                 ${myPendingHtml}
@@ -550,14 +733,14 @@
                         </div>
 
                         <!-- Statement of Account -->
-                        <div class="glass-card p-8 rounded-3xl h-[500px] animate-fade-in flex flex-col" style="animation-delay: 0.3s;">
+                        <div class="glass-card p-5 sm:p-8 rounded-3xl h-[500px] animate-fade-in flex flex-col" style="animation-delay: 0.3s;">
                             <div class="flex justify-between items-center mb-6">
                                 <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><i data-lucide="book-open" class="text-blue-600"></i> Statement of Account</h2>
                                 <button onclick="loadData()" class="text-blue-600 hover:bg-blue-50 font-bold flex items-center gap-2 text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-blue-100 transition-all"><i data-lucide="refresh-cw" class="w-4 h-4"></i> Sync</button>
                             </div>
                             <div class="overflow-x-auto border border-gray-100 rounded-2xl flex-1 bg-white/50 relative">
-                                <table class="w-full text-left border-collapse">
-                                    <thead class="bg-gray-50 sticky top-0 shadow-sm z-10"><tr class="text-gray-500 text-xs uppercase tracking-wider"><th class="px-5 py-4 font-bold">Timestamp</th><th class="px-5 py-4 font-bold">Direction</th><th class="px-5 py-4 font-bold">Amount</th><th class="px-5 py-4 font-bold">Reference</th></tr></thead>
+                                <table class="w-full text-left border-collapse min-w-[520px]">
+                                    <thead class="bg-gray-50 sticky top-0 shadow-sm z-10"><tr class="text-gray-500 text-xs uppercase tracking-wider"><th class="px-4 sm:px-5 py-4 font-bold">Timestamp</th><th class="px-4 sm:px-5 py-4 font-bold">Direction</th><th class="px-4 sm:px-5 py-4 font-bold">Amount</th><th class="px-4 sm:px-5 py-4 font-bold">Reference</th></tr></thead>
                                     <tbody>${userTransactionsHtml}</tbody>
                                 </table>
                             </div>
@@ -575,12 +758,22 @@
            ACTION HANDLERS
            ========================================== */
 
-        window.logout = function() { localStorage.removeItem('currentUser'); currentUser = null; showToast('Securely logged out'); render(); }
+        window.logout = function() { 
+            localStorage.removeItem('currentUser'); 
+            currentUser = null; 
+            showToast('Securely logged out'); 
+            render(); 
+        }
 
         window.updateAdminWallet = async function(action) {
             const amt = document.getElementById('admin-wallet-amount').value;
             if (!amt || parseFloat(amt) <= 0) return showToast('Enter a valid amount', 'error');
-            try { await apiCall('/api/admin', 'PUT', { amount: amt, action }); showToast(`Treasury updated`, 'success'); document.getElementById('admin-wallet-amount').value = ''; await loadData(); } catch (err) {}
+            try { 
+                await apiCall('/api/admin', 'PUT', { amount: amt, action }); 
+                showToast(`Treasury updated`, 'success'); 
+                document.getElementById('admin-wallet-amount').value = ''; 
+                await loadData(); 
+            } catch (err) {}
         }
 
         window.handleCreditDebit = async function(userId, username, type) {
@@ -588,21 +781,37 @@
             if (rawAmt === null) return; 
             const amt = parseFloat(rawAmt);
             if (isNaN(amt) || amt <= 0) return showToast('Invalid amount', 'error');
-            try { await apiCall('/api/wallet', 'POST', { userId, amount: amt, action: type, description: `Manual ${type.toLowerCase()} by Admin` }); showToast(`Success`, 'success'); await loadData(); } catch(err) {}
+            try { 
+                await apiCall('/api/wallet', 'POST', { userId, amount: amt, action: type, description: `Manual ${type.toLowerCase()} by Admin` }); 
+                showToast(`Success`, 'success'); 
+                await loadData(); 
+            } catch(err) {}
         }
 
         window.handleDeleteUser = async function(userId, username) {
             if (!confirm(`Revoke access for ${username}? Remaining balance will route to Treasury.`)) return;
-            try { const res = await apiCall(`/api/users?id=${userId}`, 'DELETE'); showToast(`Access revoked.`, 'info'); await loadData(); } catch (err) {}
+            try { 
+                const res = await apiCall(`/api/users?id=${userId}`, 'DELETE'); 
+                showToast(`Access revoked.`, 'info'); 
+                await loadData(); 
+            } catch (err) {}
         }
 
         window.updateMarquee = async function() {
             const text = document.getElementById('marquee-input').value;
-            try { await apiCall('/api/admin', 'POST', { marqueeText: text }); showToast('Broadcast updated', 'success'); await loadData(); } catch(err) {}
+            try { 
+                await apiCall('/api/admin', 'POST', { marqueeText: text }); 
+                showToast('Broadcast updated', 'success'); 
+                await loadData(); 
+            } catch(err) {}
         }
 
         window.handleRequest = async function(requestId, userId, amount, action) {
-            try { await apiCall('/api/requests', 'PUT', { requestId, userId, amount, action }); showToast(`Fund Requisition ${action}d`, 'success'); await loadData(); } catch (err) {}
+            try { 
+                await apiCall('/api/requests', 'PUT', { requestId, userId, amount, action }); 
+                showToast(`Fund Requisition ${action}d`, 'success'); 
+                await loadData(); 
+            } catch (err) {}
         }
 
         window.processRechargeAdmin = async function(requestId, userId, planPrice, action) {
@@ -616,7 +825,7 @@
 
             try { 
                 await apiCall('/api/recharge', 'PUT', { requestId, userId, planPrice, otfAmount, action, adminNote }); 
-                showToast(`Recharge ${action === 'approve' ? 'approved and OTF credited' : 'rejected and refunded'}`, 'success'); 
+                showToast(`Recharge ${action === 'approve' ? 'approved and Cashback credited' : 'rejected and refunded'}`, 'success'); 
                 await loadData(); 
             } catch (err) {}
         }
@@ -625,7 +834,12 @@
             const amtRaw = document.getElementById('request-amount').value;
             const amt = parseFloat(amtRaw);
             if (isNaN(amt) || amt <= 0) return showToast('Enter a valid amount', 'error');
-            try { await apiCall('/api/requests', 'POST', { userId: currentUser.id, amount: amt }); showToast('Fund requisition sent', 'success'); document.getElementById('request-amount').value = ''; await loadData(); } catch (err) {}
+            try { 
+                await apiCall('/api/requests', 'POST', { userId: currentUser.id, amount: amt }); 
+                showToast('Fund requisition sent', 'success'); 
+                document.getElementById('request-amount').value = ''; 
+                await loadData(); 
+            } catch (err) {}
         }
 
         // FRC / Normal UI Handlers
@@ -649,16 +863,26 @@
             const secFrc = document.getElementById('frc-section');
             const secNormal = document.getElementById('normal-section');
             
-            if (!tabFrc || !tabNormal) return; // Guard if not rendered yet
+            if (!tabFrc || !tabNormal) return;
 
             if(mode === 'frc') {
-                tabFrc.classList.replace('text-gray-500', 'text-blue-600'); tabFrc.classList.replace('hover:bg-white/50', 'bg-white'); tabFrc.classList.add('shadow-sm');
-                tabNormal.classList.replace('text-blue-600', 'text-gray-500'); tabNormal.classList.replace('bg-white', 'hover:bg-white/50'); tabNormal.classList.remove('shadow-sm');
-                secFrc.classList.remove('hidden'); secNormal.classList.add('hidden');
+                tabFrc.classList.replace('text-gray-500', 'text-blue-600'); 
+                tabFrc.classList.replace('hover:bg-white/50', 'bg-white'); 
+                tabFrc.classList.add('shadow-sm');
+                tabNormal.classList.replace('text-blue-600', 'text-gray-500'); 
+                tabNormal.classList.replace('bg-white', 'hover:bg-white/50'); 
+                tabNormal.classList.remove('shadow-sm');
+                secFrc.classList.remove('hidden'); 
+                secNormal.classList.add('hidden');
             } else {
-                tabNormal.classList.replace('text-gray-500', 'text-blue-600'); tabNormal.classList.replace('hover:bg-white/50', 'bg-white'); tabNormal.classList.add('shadow-sm');
-                tabFrc.classList.replace('text-blue-600', 'text-gray-500'); tabFrc.classList.replace('bg-white', 'hover:bg-white/50'); tabFrc.classList.remove('shadow-sm');
-                secNormal.classList.remove('hidden'); secFrc.classList.add('hidden');
+                tabNormal.classList.replace('text-gray-500', 'text-blue-600'); 
+                tabNormal.classList.replace('hover:bg-white/50', 'bg-white'); 
+                tabNormal.classList.add('shadow-sm');
+                tabFrc.classList.replace('text-blue-600', 'text-gray-500'); 
+                tabFrc.classList.replace('bg-white', 'hover:bg-white/50'); 
+                tabFrc.classList.remove('shadow-sm');
+                secNormal.classList.remove('hidden'); 
+                secFrc.classList.add('hidden');
             }
         }
 
@@ -675,9 +899,8 @@
                 const freshOtf = parseFloat(parts[1]);
                 const mnpOtf = parseFloat(parts[2]);
                 
-                otfAmount = freshOtf; // Defaults to normal OTF, admin will confirm
+                otfAmount = freshOtf; 
                 
-                // Pack as JSON string so admin dashboard can read MNP/Fresh data properly
                 planDesc = JSON.stringify({ type: 'FRC', desc: `FRC ${parts[0]}: ${parts[3]}`, fresh: freshOtf, mnp: mnpOtf });
             } else {
                 const amtRaw = document.getElementById('normal-amount').value;
@@ -686,7 +909,6 @@
                 
                 otfAmount = parseFloat((planPrice * 0.02).toFixed(2));
                 
-                // Pack as JSON string
                 planDesc = JSON.stringify({ type: 'NORMAL', desc: `Normal Recharge` });
             }
 
@@ -697,7 +919,10 @@
                 showToast(`Recharge requested! ₹${planPrice} deducted.`, 'success');
                 cancelRecharge();
                 document.getElementById('recharge-phone').value = '';
-                if(currentRechargeMode === 'normal') { document.getElementById('normal-amount').value = ''; document.getElementById('normal-otf-display').innerText = '0.00'; }
+                if(currentRechargeMode === 'normal') { 
+                    document.getElementById('normal-amount').value = ''; 
+                    document.getElementById('normal-otf-display').innerText = '0.00'; 
+                }
                 await loadData(); 
             } catch (err) {}
         }
@@ -710,11 +935,15 @@
         setInterval(() => {
             if (currentUser) {
                 fetch('/api/requests').then(res => res.json()).then(data => {
-                    if (JSON.stringify(data.requests) !== JSON.stringify(fundRequests)) { fundRequests = data.requests; render(); }
+                    if (JSON.stringify(data.requests) !== JSON.stringify(fundRequests)) { 
+                        fundRequests = data.requests; render(); 
+                    }
                 }).catch(err => console.error(err));
                 
                 fetch('/api/recharge').then(res => res.json()).then(data => {
-                    if (JSON.stringify(data.requests) !== JSON.stringify(rechargeRequests)) { rechargeRequests = data.requests; render(); }
+                    if (JSON.stringify(data.requests) !== JSON.stringify(rechargeRequests)) { 
+                        rechargeRequests = data.requests; render(); 
+                    }
                 }).catch(err => console.error(err));
             }
         }, 10000);
