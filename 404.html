@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 Not Found | Admin Portal - Pratheek Enterprises</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts: Inter (Standard for Enterprise Admin Panels) -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Subtle grid background pattern */
+        .bg-grid-pattern {
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 bg-grid-pattern flex flex-col items-center justify-center min-h-screen p-6 relative">
+    
+    <!-- Enterprise Logo / Header placeholder -->
+    <div class="absolute top-8 left-8 flex items-center gap-3">
+        <div class="w-8 h-8 bg-blue-600 rounded text-white flex items-center justify-center font-bold shadow-md">
+            PE
+        </div>
+        <span class="font-semibold text-slate-700 tracking-wide text-sm uppercase">Admin Portal</span>
+    </div>
+
+    <!-- Main Admin Card -->
+    <div class="bg-white p-8 md:p-12 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200 max-w-2xl w-full text-center relative overflow-hidden z-10">
+        
+        <!-- Top branding accent line -->
+        <div class="absolute top-0 left-0 w-full h-1.5 bg-blue-600"></div>
+        
+        <!-- Icon -->
+        <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 ring-8 ring-blue-50/50">
+            <i class="fa-solid fa-server text-3xl"></i>
+        </div>
+        
+        <!-- Error Heading -->
+        <h1 class="text-7xl font-black text-slate-900 mb-2 tracking-tight">404</h1>
+        <h2 class="text-2xl font-semibold text-slate-800 mb-4">Route Not Found</h2>
+        
+        <!-- Error Description -->
+        <p class="text-slate-500 mb-10 max-w-md mx-auto leading-relaxed">
+            The requested admin route or resource does not exist. You may have entered an incorrect URL extension, or your sub-agent access doesn't permit this view.
+        </p>
+        
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <!-- Primary Action -->
+            <a href="/" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm shadow-blue-600/20">
+                <i class="fa-solid fa-chart-line"></i>
+                Back to Dashboard
+            </a>
+            
+            <!-- Secondary Action -->
+            <button onclick="window.history.back()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm">
+                <i class="fa-solid fa-arrow-left"></i>
+                Go Back
+            </button>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="absolute bottom-6 text-slate-400 text-sm font-medium">
+        &copy; 2024 Pratheek Enterprises. All rights reserved.
+    </div>
+
+</body>
+</html>
