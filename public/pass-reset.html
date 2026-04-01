@@ -18,7 +18,7 @@
                 <i data-lucide="key-round" class="text-blue-600 w-8 h-8"></i>
             </div>
             <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">Reset Password</h1>
-            <p class="text-gray-500 font-medium mt-2 text-sm">Update your account password securely</p>
+            <p class="text-gray-500 font-medium mt-2 text-sm">Update your account password securely.</p>
         </div>
 
         <form id="pass-reset-form" class="space-y-5">
@@ -68,10 +68,13 @@
 
         document.getElementById('pass-reset-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+            const authToken = localStorage.getItem('authToken');
 
-            if (!currentUser || !currentUser.id) {
-                showToast('Please login first to reset password.', 'error');
+            if (!authToken) {
+                showToast('Session expired. Please login again.', 'error');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1200);
                 return;
             }
 
@@ -97,14 +100,11 @@
             try {
                 const res = await fetch('/api/pass-reset', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: currentUser.id,
-                        username: currentUser.username,
-                        oldPassword,
-                        newPassword,
-                        confirmNewPassword
-                    })
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ oldPassword, newPassword, confirmNewPassword })
                 });
 
                 const data = await res.json();

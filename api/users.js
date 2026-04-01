@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     try {
       const result = await db.query(
         "INSERT INTO users (username, password, balance, role) VALUES ($1, $2, 0, 'user') RETURNING id, username",
-        [username, hashPassword(password)]
+        [username, await hashPassword(password)]
       );
       res.status(201).json({ success: true, user: result.rows[0] });
     } catch (error) {

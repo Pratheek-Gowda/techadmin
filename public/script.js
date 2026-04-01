@@ -175,6 +175,7 @@ function renderLogin() {
             if (data.success) {
                 currentUser = data.user;
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                if (data.token) localStorage.setItem('authToken', data.token);
                 showToast(`Welcome back, ${currentUser.username}`, 'success');
                 await loadData();
             }
@@ -604,6 +605,7 @@ function renderUserDashboard() {
 
 window.logout = function() { 
     localStorage.removeItem('currentUser'); 
+    localStorage.removeItem('authToken');
     currentUser = null; 
     showToast('Securely logged out'); 
     render(); 

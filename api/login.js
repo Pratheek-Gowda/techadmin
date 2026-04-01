@@ -1,5 +1,7 @@
 const db = require('./db');
-const { verifyPassword } = require('./password-utils');
+const { verifyPassword, hashPassword } = require('./password-utils');
+const { signToken } = require('./auth');
+const DUMMY_PASSWORD_HASH_PROMISE = hashPassword('__invalid_user_placeholder__');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,14 +16,21 @@ export default async function handler(req, res) {
       [username]
     );
 
-    if (result.rows.length === 0 || !verifyPassword(password, result.rows[0].password)) {
+    const fallbackPasswordHash = await DUMMY_PASSWORD_HASH_PROMISE;
+    const userRecord = result.rows[0];
+    const passwordToCheck = userRecord ? userRecord.password : fallbackPasswordHash;
+    const isValidPassword = await verifyPassword(password, passwordToCheck);
+
+    if (!userRecord || !isValidPassword) {
       res.status(401).json({ success: false, error: 'Invalid credentials' });
       return;
     }
 
-    const { id, username: name, balance, role } = result.rows[0];
-    res.status(200).json({ success: true, user: { id, username: name, balance, role } });
+    const { id, username: name, balance, role } = userRecord;
+    const token = signToken({ userId: id, username: name, role });
+    res.status(200).json({ success: true, user: { id, username: name, balance, role }, token });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
