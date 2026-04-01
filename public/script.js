@@ -157,6 +157,9 @@ function renderLogin() {
                     <button type="submit" class="w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30 transition-all mt-4">
                         Secure Login
                     </button>
+                    <div class="text-center mt-2">
+                        <a href="/pass-reset" class="text-sm text-blue-600 hover:text-blue-700 font-semibold">Reset Password</a>
+                    </div>
                 </form>
             </div>
         </div>
