@@ -1,0 +1,126 @@
+/* =======================================================
+   PREMIUM BUSINESS IDENTITY STYLES (GLASSMORPHISM)
+   ======================================================= */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.animated-bg {
+    background: linear-gradient(-45deg, #f0f4ff, #e0e7ff, #f8fafc, #dbeafe);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+    min-height: 100vh;
+}
+
+@keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 10px 40px -10px rgba(31, 38, 135, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 40px -10px rgba(31, 38, 135, 0.15);
+}
+
+.glass-card-dark {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.3);
+}
+
+.glass-nav {
+    background: rgba(30, 58, 138, 0.9);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.5); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.8); }
+
+input, textarea, select {
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.9) !important;
+}
+input:focus, textarea:focus, select:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3) !important;
+    border-color: #3b82f6 !important;
+}
+button { transition: all 0.2s ease-in-out; }
+button:active { transform: scale(0.97); }
+
+.glass-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100;
+}
+
+.animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.marquee-container {
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+    background: rgba(250, 204, 21, 0.9);
+    backdrop-filter: blur(10px);
+    width: 100%;
+}
+.marquee-content {
+    display: inline-block;
+    animation: marquee 16s linear infinite;
+    will-change: transform;
+}
+@keyframes marquee {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(calc(-100% - 2rem)); }
+}
+
+#toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 50; }
+.toast {
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+input[type="radio"]:checked + div {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+}
+
+/* Mobile safety */
+body { overflow-x: hidden; }
+#app { width: 100%; overflow-x: hidden; }
+
+/* Reduce blur on small screens for performance */
+@media (max-width: 640px) {
+    .glass-card, .glass-card-dark, .glass-nav { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+}
+
+/* Tighten tables on mobile */
+@media (max-width: 768px) {
+    table { font-size: 12px; }
+    th, td { padding: 10px 12px; }
+}
