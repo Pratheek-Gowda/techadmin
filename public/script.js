@@ -269,7 +269,6 @@ function renderAdminDashboard() {
     `}).join('') || '<p class="text-gray-500 text-sm text-center py-4 bg-black/5 rounded-xl border border-dashed border-gray-300 font-medium">No pending recharges.</p>';
 
     app.innerHTML = `
-        <!-- Navbar -->
         <nav class="glass-nav text-white p-4 shadow-lg sticky top-0 z-40">
             <div class="max-w-7xl mx-auto flex justify-between items-center">
                 <h1 class="text-xl font-extrabold flex items-center gap-3 tracking-wide">
@@ -282,10 +281,8 @@ function renderAdminDashboard() {
 
         <div class="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
             
-            <!-- Left Column -->
             <div class="lg:col-span-2 space-y-6">
                 
-                <!-- Admin Wallet Card -->
                 <div class="glass-card p-6 sm:p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.1s;">
                     <div class="flex items-center justify-between">
                         <div>
@@ -302,7 +299,6 @@ function renderAdminDashboard() {
                     </div>
                 </div>
 
-                <!-- User Management -->
                 <div class="glass-card p-5 sm:p-7 lg:p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.2s;">
                     <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800"><i data-lucide="users" class="text-blue-500"></i> Manage Subagents</h2>
                     
@@ -326,7 +322,6 @@ function renderAdminDashboard() {
                     </div>
                 </div>
 
-                <!-- Transaction History -->
                 <div class="glass-card p-5 sm:p-7 lg:p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.3s;">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><i data-lucide="history" class="text-blue-500"></i> Ledger History</h2>
@@ -349,10 +344,8 @@ function renderAdminDashboard() {
                 </div>
             </div>
 
-            <!-- Right Column -->
             <div class="space-y-6">
                 
-                <!-- Recharge Requests -->
                 <div class="glass-card p-6 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.15s;">
                     <div class="absolute top-0 left-0 w-32 h-32 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
                     <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800 relative z-10"><i data-lucide="smartphone" class="text-blue-500"></i> Pending Recharges</h2>
@@ -361,7 +354,6 @@ function renderAdminDashboard() {
                     </div>
                 </div>
 
-                <!-- Fund Requests -->
                 <div class="glass-card p-6 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.20s;">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
                     <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-800 relative z-10"><i data-lucide="bell-ring" class="text-yellow-500"></i> Pending Fund Req.</h2>
@@ -370,7 +362,6 @@ function renderAdminDashboard() {
                     </div>
                 </div>
 
-                <!-- Notification Settings -->
                 <div class="glass-card p-5 sm:p-8 rounded-3xl animate-fade-in" style="animation-delay: 0.25s;">
                     <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800"><i data-lucide="broadcast" class="text-blue-500"></i> Global Announcement</h2>
                     <textarea id="marquee-input" class="w-full border-none bg-white p-4 rounded-2xl h-32 mb-4 outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium shadow-inner resize-none">${adminData.marqueeText}</textarea>
@@ -465,12 +456,10 @@ function renderUserDashboard() {
     if (myPendingHtml === '') myPendingHtml = '<p class="text-gray-500 text-sm text-center py-5 bg-white/50 rounded-xl border border-dashed border-gray-300 font-medium">No active pending requests.</p>';
 
     app.innerHTML = `
-        <!-- Marquee Notification -->
         <div class="marquee-container text-yellow-900 py-2.5 font-bold shadow-md border-b border-yellow-500/30 text-sm tracking-wide">
             <div class="marquee-content w-full">${adminData.marqueeText}</div>
         </div>
 
-        <!-- Navbar -->
         <nav class="glass-nav text-white p-4 shadow-lg sticky top-0 z-40">
             <div class="max-w-6xl mx-auto flex justify-between items-center">
                 <h1 class="text-xl font-extrabold flex items-center gap-3 tracking-wide">
@@ -483,10 +472,8 @@ function renderUserDashboard() {
 
         <div class="max-w-6xl mx-auto p-4 grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
             
-            <!-- Wallet Info Column -->
             <div class="md:col-span-1 space-y-6">
                 
-                <!-- Balance Card -->
                 <div class="glass-card p-6 rounded-3xl text-center relative overflow-hidden animate-fade-in" style="animation-delay: 0.1s;">
                     <div class="absolute -top-10 -right-10 w-40 h-40 bg-green-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
                     
@@ -502,32 +489,26 @@ function renderUserDashboard() {
                     </div>
                 </div>
 
-                <!-- Mobile Recharge Module -->
                 <div class="glass-card p-6 rounded-3xl relative overflow-hidden animate-fade-in" style="animation-delay: 0.15s;">
                     <h3 class="font-extrabold text-gray-800 mb-4 text-sm text-left flex items-center gap-2"><i data-lucide="smartphone" class="w-4 h-4 text-blue-600"></i> Mobile Recharge</h3>
                     
-                    <!-- Step 1: Phone Entry -->
                     <div id="recharge-step-1">
                         <input type="tel" id="recharge-phone" placeholder="Enter Mobile Number" class="border-none bg-white/90 p-3 rounded-xl w-full outline-none focus:ring-2 focus:ring-blue-500 font-bold mb-3 border border-gray-100 shadow-inner">
                         <button onclick="showRechargePlans()" class="bg-gray-900 text-white px-4 py-3 rounded-xl font-bold hover:bg-black w-full flex justify-center items-center gap-2 transition-all shadow-lg">Proceed <i data-lucide="chevron-right" class="w-4 h-4"></i></button>
                     </div>
 
-                    <!-- Step 2: Plan Selection -->
                     <div id="recharge-step-2" class="hidden">
                         <p class="text-xs font-bold text-gray-500 mb-3 text-center">Recharging <span id="display-phone" class="text-blue-600 tracking-wider font-black"></span></p>
                         
-                        <!-- FRC / Normal Toggle Tabs -->
                         <div class="flex gap-1 mb-4 p-1 bg-gray-200/50 rounded-xl">
                             <button id="tab-frc" onclick="setRechargeMode('frc')" class="flex-1 py-2 rounded-lg bg-white shadow-sm font-bold text-blue-600 text-xs transition-all">FRC Plans</button>
                             <button id="tab-normal" onclick="setRechargeMode('normal')" class="flex-1 py-2 rounded-lg text-gray-500 font-bold hover:bg-white/50 text-xs transition-all">Normal (2% Cashback)</button>
                         </div>
 
-                        <!-- FRC Plans List -->
                         <div id="frc-section" class="space-y-2 mb-4 max-h-[220px] overflow-y-auto pr-1">
                             ${frcPlansHtml}
                         </div>
 
-                        <!-- Normal Recharge Input (2% OTF) -->
                         <div id="normal-section" class="hidden mb-4">
                             <input type="number" step="0.01" id="normal-amount" oninput="document.getElementById('normal-otf-display').innerText = formatCurrency(this.value * 0.02)" placeholder="Enter Recharge Amount (₹)" class="border-none bg-white/90 p-4 rounded-xl w-full outline-none focus:ring-2 focus:ring-blue-500 font-black text-center text-xl shadow-inner border border-gray-100 mb-3">
                             <div class="bg-blue-50/50 text-blue-800 p-3 rounded-xl text-xs font-bold border border-blue-100 flex justify-between items-center shadow-sm">
@@ -543,7 +524,6 @@ function renderUserDashboard() {
                     </div>
                 </div>
 
-                <!-- Admin Contact -->
                 <div class="glass-card-dark text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden animate-fade-in" style="animation-delay: 0.2s;">
                     <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-blue-500 rounded-full mix-blend-overlay filter blur-3xl opacity-30"></div>
                     <h2 class="text-lg font-bold mb-5 flex items-center gap-3 border-b border-white/10 pb-4 relative z-10"><i data-lucide="headset" class="text-cyan-300"></i> Priority Support</h2>
@@ -555,10 +535,8 @@ function renderUserDashboard() {
                 </div>
             </div>
 
-            <!-- History & Pending Column -->
             <div class="md:col-span-2 space-y-6">
                 
-                <!-- My Pending Status Tracking -->
                 <div class="glass-card p-5 sm:p-6 rounded-3xl animate-fade-in relative overflow-hidden" style="animation-delay: 0.2s;">
                     <h2 class="text-lg font-bold flex items-center gap-2 text-gray-800 mb-4 border-b border-gray-100 pb-3"><i data-lucide="clock" class="text-blue-500 w-5 h-5"></i> My Pending Requests</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[250px] overflow-y-auto pr-1">
@@ -566,7 +544,6 @@ function renderUserDashboard() {
                     </div>
                 </div>
 
-                <!-- Statement of Account -->
                 <div class="glass-card p-5 sm:p-8 rounded-3xl h-[500px] animate-fade-in flex flex-col" style="animation-delay: 0.3s;">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-xl font-bold flex items-center gap-2 text-gray-800"><i data-lucide="book-open" class="text-blue-600"></i> Statement of Account</h2>
