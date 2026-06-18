@@ -4,7 +4,7 @@ export default function SignUpPage() {
 return (
 
 
-  {/* LEFT PANEL: Enterprise Branding (Hidden on Mobile, shows on Desktop) */}
+  {/* LEFT PANEL: Enterprise Branding */}
   <div className="hidden lg:flex w-1/2 bg-slate-950 relative items-center justify-center overflow-hidden">
     
     {/* Subtle Background Grid Pattern */}
@@ -47,7 +47,7 @@ return (
   <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative">
     <div className="w-full max-w-[440px] animate-fade-in relative z-10">
       
-      {/* Mobile Header (Only visible on small screens since left panel is hidden) */}
+      {/* Mobile Header */}
       <div className="lg:hidden text-center mb-8">
          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -61,32 +61,23 @@ return (
       <SignUp
         appearance={{
           elements: {
-            // Extremely clean, SaaS-style card with soft shadows
             card: "bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 rounded-2xl p-8 w-full",
-            header: "hidden lg:block", // Show Clerk's header on desktop
+            header: "hidden lg:block", 
             headerTitle: "text-2xl font-bold text-slate-900 tracking-tight",
             headerSubtitle: "text-slate-500 font-medium mt-1",
-            
-            // Refined Social Buttons
             socialButtonsBlockButton: "bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors rounded-xl text-slate-700 font-semibold py-2.5 shadow-sm",
             socialButtonsBlockButtonText: "font-semibold text-sm",
-            
-            // Divider
             dividerLine: "bg-slate-100",
             dividerText: "text-slate-400 font-semibold text-xs tracking-widest",
-            
-            // Form Inputs - crisp and clean
             formFieldLabel: "text-sm font-semibold text-slate-700 mb-1.5",
             formFieldInput: "w-full bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 focus:bg-white transition-all font-medium text-slate-900 shadow-sm",
             
-            // Primary Button - deep corporate blue
-            formButtonPrimary: "w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/20 transition-all mt-4 active:scale-[0.98]",
+            // Explicitly style OTP boxes to fix formatting
+            otpCodeFieldInput: "bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:border-blue-600 rounded-xl text-center text-lg font-bold shadow-sm transition-all",
             
-            // Footer text
+            formButtonPrimary: "w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/20 transition-all mt-4 active:scale-[0.98]",
             footerActionText: "text-slate-500 font-medium",
             footerActionLink: "text-blue-600 hover:text-blue-800 font-bold transition-colors",
-            
-            // Identity Preview (When checking email)
             identityPreview: "bg-slate-50 border border-slate-200 rounded-xl mb-4",
             identityPreviewText: "text-slate-800 font-bold",
             identityPreviewEditButtonIcon: "text-blue-600 hover:text-blue-700",
