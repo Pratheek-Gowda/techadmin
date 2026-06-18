@@ -2,6 +2,9 @@ import { ClerkProvider } from '@clerk/nextjs';
 // Import your existing premium business CSS
 import './globals.css'; // Rename your public/style.css to app/globals.css
 
+// ADDED THIS: Importing the new Gatekeeper pop-up component
+import AccessModal from './AccessModal';
+
 export const metadata = {
   title: 'Pratheek Enterprises - Subagent Portal',
   description: 'Secure Subagent Portal for Pratheek Enterprises',
@@ -48,6 +51,10 @@ export default function RootLayout({
         </head>
         {/* Your existing body classes for the animated background */}
         <body className="text-gray-800 font-sans min-h-screen animated-bg overflow-x-hidden">
+          
+          {/* ADDED THIS: The Gatekeeper pop-up will now watch over every page */}
+          <AccessModal />
+          
           {children}
         </body>
       </html>
