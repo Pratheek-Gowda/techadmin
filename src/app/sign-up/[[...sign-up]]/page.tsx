@@ -4,6 +4,7 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen w-full flex bg-slate-50 font-sans selection:bg-blue-200">
       
+      {}
       {/* LEFT PANEL: Enterprise Branding */}
       <div className="hidden lg:flex w-1/2 bg-slate-950 relative items-center justify-center overflow-hidden">
         
@@ -13,6 +14,7 @@ export default function SignUpPage() {
         {/* Abstract Gradient Glow */}
         <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-blue-600 rounded-full mix-blend-screen filter blur-[150px] opacity-20"></div>
 
+        {}
         <div className="relative z-10 p-16 max-w-2xl text-white">
           <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center mb-8 shadow-2xl shadow-blue-900/50 border border-blue-400/30">
             {/* Enterprise Icon */}
@@ -32,6 +34,7 @@ export default function SignUpPage() {
             Join Pratheek Enterprises today. Get immediate access to enterprise-grade tools, real-time analytics, and premium support designed to scale your operations.
           </p>
 
+          {}
           <div className="flex items-center gap-4 pt-6 border-t border-slate-800">
             <div className="flex -space-x-3">
               <div className="w-10 h-10 rounded-full border-2 border-slate-950 bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300">PR</div>
@@ -43,6 +46,7 @@ export default function SignUpPage() {
         </div>
       </div>
 
+      {}
       {/* RIGHT PANEL: The Sign Up Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative">
         <div className="w-full max-w-[440px] animate-fade-in relative z-10">
@@ -58,6 +62,7 @@ export default function SignUpPage() {
             <p className="text-slate-500 font-medium mt-1">Create your account</p>
           </div>
 
+          {}
           <SignUp
             appearance={{
               elements: {
@@ -65,7 +70,7 @@ export default function SignUpPage() {
                 header: "hidden lg:block", 
                 headerTitle: "text-2xl font-bold text-slate-900 tracking-tight",
                 headerSubtitle: "text-slate-500 font-medium mt-1",
-                socialButtonsBlockButton: "bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors rounded-xl text-slate-700 font-semibold py-2.5 shadow-sm",
+                socialButtonsBlockButton: "bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all rounded-xl text-slate-700 font-semibold py-2.5 shadow-sm active:scale-[0.98] disabled:opacity-60 disabled:cursor-wait",
                 socialButtonsBlockButtonText: "font-semibold text-sm",
                 dividerLine: "bg-slate-100",
                 dividerText: "text-slate-400 font-semibold text-xs tracking-widest",
@@ -86,6 +91,19 @@ export default function SignUpPage() {
               }
             }}
           />
+
+          {}
+          <div className="mt-8 text-center flex justify-center">
+            <a 
+              href="https://pratheek.shop" 
+              className="group flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-blue-600 transition-all"
+            >
+              <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+              </svg>
+              Return to Pratheek.shop
+            </a>
+          </div>
         </div>
       </div>
     </div>
