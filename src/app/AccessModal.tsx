@@ -40,6 +40,7 @@ export default function AccessModal() {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full p-8 text-center relative overflow-hidden">
         
+        {}
         {/* VIEW 1: Asking if they are an agent */}
         {view === "question" && (
           <div>
@@ -66,9 +67,20 @@ export default function AccessModal() {
                 No, I am not
               </button>
             </div>
+
+            {}
+            <div className="mt-6 pt-6 border-t border-slate-100">
+              <a 
+                href="https://pratheek.shop" 
+                className="text-sm font-bold text-slate-400 hover:text-blue-600 transition-colors underline decoration-slate-200 hover:decoration-blue-300 underline-offset-4"
+              >
+                Go to public shop (Pratheek.shop)
+              </a>
+            </div>
           </div>
         )}
 
+        {}
         {/* VIEW 2: They said No (Show choices & Contact links) */}
         {view === "rejected" && (
           <div>
@@ -115,6 +127,7 @@ export default function AccessModal() {
               </a>
             </div>
 
+            {}
             {/* Logout Button */}
             <button 
               onClick={() => signOut()} 
