@@ -70,16 +70,13 @@ export default function SignInPage() {
                 header: "hidden lg:block",
                 headerTitle: "text-2xl font-bold text-slate-900 tracking-tight",
                 headerSubtitle: "text-slate-500 font-medium mt-1",
-                socialButtonsBlockButton: "bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors rounded-xl text-slate-700 font-semibold py-2.5 shadow-sm",
+                socialButtonsBlockButton: "bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all rounded-xl text-slate-700 font-semibold py-2.5 shadow-sm active:scale-[0.98] disabled:opacity-60 disabled:cursor-wait",
                 socialButtonsBlockButtonText: "font-semibold text-sm",
                 dividerLine: "bg-slate-100",
                 dividerText: "text-slate-400 font-semibold text-xs tracking-widest",
                 formFieldLabel: "text-sm font-semibold text-slate-700 mb-1.5",
                 formFieldInput: "w-full bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 focus:bg-white transition-all font-medium text-slate-900 shadow-sm",
-                
-                // OTP GLITCH FIX: Explicitly style the tiny OTP boxes so they don't stretch
                 otpCodeFieldInput: "bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:border-blue-600 rounded-xl text-center text-lg font-bold shadow-sm transition-all",
-                
                 formButtonPrimary: "w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/20 transition-all mt-4 active:scale-[0.98]",
                 footerActionText: "text-slate-500 font-medium",
                 footerActionLink: "text-blue-600 hover:text-blue-800 font-bold transition-colors",
@@ -94,6 +91,19 @@ export default function SignInPage() {
               }
             }}
           />
+
+          {}
+          <div className="mt-8 text-center flex justify-center">
+            <a 
+              href="https://pratheek.shop" 
+              className="group flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-blue-600 transition-all"
+            >
+              <svg className="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+              </svg>
+              Return to Pratheek.shop
+            </a>
+          </div>
         </div>
       </div>
     </div>
