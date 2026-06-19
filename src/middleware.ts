@@ -3,8 +3,8 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 // Define which routes are completely public (e.g., Clerk's own sign-in pages)
 const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
-  '/sign-up(.*)'
-  '/.well-known(.*)'
+  '/sign-up(.*)',
+  '/.well-known(.*)' 
 ]);
 
 // Gate 1: Global Identity Shield
