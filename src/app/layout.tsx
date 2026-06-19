@@ -1,4 +1,6 @@
 import { ClerkProvider } from '@clerk/nextjs';
+// Import Next.js Script component
+import Script from 'next/script'; 
 // Import your existing premium business CSS
 import './globals.css'; // Rename your public/style.css to app/globals.css
 
@@ -30,6 +32,14 @@ export default function RootLayout({
     >
       <html lang="en">
         <head>
+          {/* 🔽 PLACED HERE: Google AdSense Script */}
+          <Script
+            async
+            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3137365464811711"
+            crossOrigin="anonymous"
+            strategy="afterInteractive"
+          />
+
           {/* Injecting your existing fonts and CDN dependencies */}
           <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
           <script src="https://cdn.tailwindcss.com"></script>
