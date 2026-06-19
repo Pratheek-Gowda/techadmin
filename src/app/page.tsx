@@ -1,11 +1,6 @@
 import { ClerkProvider } from '@clerk/nextjs';
-// Import Next.js Script component
-import Script from 'next/script'; 
 // Import your existing premium business CSS
-import './globals.css'; 
-
-// Importing the Gatekeeper pop-up component
-import AccessModal from './AccessModal';
+import './globals.css'; // Rename your public/style.css to app/globals.css
 
 export const metadata = {
   title: 'Pratheek Enterprises - Subagent Portal',
@@ -18,30 +13,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
+    // Wrap the entire app in ClerkProvider
+    // We pass custom appearance variables to seamlessly match your existing branding
     <ClerkProvider
       appearance={{
         variables: {
-          colorPrimary: '#2563eb',
+          colorPrimary: '#2563eb', // Tailwind blue-600
           colorBackground: '#ffffff',
           fontFamily: '"Plus Jakarta Sans", sans-serif',
-          borderRadius: '0.75rem'
+          borderRadius: '0.75rem' // Matches your rounded-xl aesthetic
         }
       }}
     >
       <html lang="en">
         <head>
-          {/* Ownership Verification Meta Tag */}
-          <meta name="google-adsense-account" content="ca-pub-3137365646817161" />
-
-          {/* AdSense Script for Auto Ads */}
-          <Script
-            async
-            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3137365464811711"
-            crossOrigin="anonymous"
-            strategy="afterInteractive"
-          />
-
-          {/* Existing fonts and dependencies */}
+          {/* Injecting your existing fonts and CDN dependencies */}
           <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
           <script src="https://cdn.tailwindcss.com"></script>
           <script src="https://unpkg.com/lucide@latest"></script>
@@ -60,11 +46,8 @@ export default function RootLayout({
             `
           }} />
         </head>
+        {/* Your existing body classes for the animated background */}
         <body className="text-gray-800 font-sans min-h-screen animated-bg overflow-x-hidden">
-          
-          {/* Gatekeeper pop-up */}
-          <AccessModal />
-          
           {children}
         </body>
       </html>
