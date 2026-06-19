@@ -1,36 +1,28 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
 
-// Define which routes are completely public
+// Define which routes are completely public (e.g., Clerk's own sign-in pages)
 const isPublicRoute = createRouteMatcher([
-  '/', // Explicitly allowed for crawlers and initial landing
   '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/.well-known(.*)' 
+  '/sign-up(.*)'
+  '/.well-known(.*)'
 ]);
 
+// Gate 1: Global Identity Shield
+// This middleware runs on Vercel's Edge network before the page or API is even hit.
 export default clerkMiddleware((auth, req) => {
-  // 1. Bypass for Googlebot: Allows the crawler to read your HTML code
-  const userAgent = req.headers.get("user-agent") || "";
-  if (userAgent.includes("Googlebot")) {
-    return NextResponse.next();
-  }
-
-  // 2. Bypass for the Root Path: Ensures the crawler can land on your homepage
-  if (req.nextUrl.pathname === '/') {
-    return NextResponse.next();
-  }
-
-  // 3. Protect all other routes: Keeps your portal secure
   if (!isPublicRoute(req)) {
+    // If the user does not have a valid Clerk session, they are instantly 
+    // redirected to the Clerk Login page using the Environment Variables you set.
     auth().protect();
   }
 });
 
-// Configure the matcher
+// Configure the matcher to run on all pages and API routes, excluding static assets
 export const config = {
   matcher: [
+    // Skip Next.js internals and static files (like your style.css or script.js)
     '/((?!_next|[^?]*\\.(?:html|css|js|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always protect all API routes (your existing /api/admin, /api/login, etc.)
     '/(api|trpc)(.*)',
   ],
 };
