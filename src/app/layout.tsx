@@ -82,7 +82,8 @@ export default function RootLayout({
             `
           }} />
         </head>
-        <body className="text-gray-800 font-sans min-h-screen animated-bg overflow-x-hidden">
+        {/* CHANGED: Replaced 'animated-bg' and 'text-gray-800' with a solid dark background 'bg-slate-950' and light text 'text-gray-100' */}
+        <body className="bg-slate-950 text-gray-100 font-sans min-h-screen overflow-x-hidden">
           
           {/* Gatekeeper pop-up */}
           <AccessModal />
