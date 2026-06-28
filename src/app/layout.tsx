@@ -82,8 +82,7 @@ export default function RootLayout({
             `
           }} />
         </head>
-        {/* Light theme base colors */}
-        <body className="bg-slate-50 text-gray-900 font-sans min-h-screen overflow-x-hidden">
+        <body className="text-gray-800 font-sans min-h-screen animated-bg overflow-x-hidden">
           
           {/* Gatekeeper pop-up */}
           <AccessModal />
